@@ -111,7 +111,11 @@
     let zoom = 5;
     let title = "📡 RADAR BMKG: NASIONAL (INDONESIA)";
 
-    if (region === 'palembang' || region === 'sumsel') {
+    if (region === 'rumah') {
+      center = [-2.5858, 104.12295];
+      zoom = 10;
+      title = "🏠 RADAR BMKG: SEKITAR RUMAH (SUNGAI LILIN)";
+    } else if (region === 'palembang' || region === 'sumsel') {
       center = [-2.99, 104.75];
       zoom = 8;
       title = "📡 RADAR BMKG: PALEMBANG & SUMSEL";
@@ -139,6 +143,16 @@
       zoomControl: false,
       attributionControl: false
     }).setView(center, zoom);
+
+    if (region === 'rumah') {
+      const houseIcon = L.divIcon({
+        className: 'house-marker',
+        html: '<div style="background:#ef4444; width:22px; height:22px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 14px rgba(239,68,68,0.9); display:flex; align-items:center; justify-content:center; font-size:12px;">🏠</div>',
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+      });
+      L.marker([-2.5858, 104.12295], { icon: houseIcon, zIndexOffset: 1000 }).addTo(map);
+    }
 
     // Peta dasar Esri World Street Map (peta jalan & nama kota yang sangat jelas)
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {

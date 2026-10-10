@@ -60,6 +60,7 @@ async function scrapeBMKGMaps(wibTime) {
   });
 
   const regions = [
+    { key: 'rumah', kvKey: 'LATEST_RADAR_RUMAH_FILE_ID', name: 'Sekitar Rumah (Sungai Lilin)' },
     { key: 'palembang', kvKey: 'LATEST_RADAR_PALEMBANG_FILE_ID', name: 'Palembang & Sumsel' },
     { key: 'sumatera', kvKey: 'LATEST_RADAR_SUMATERA_FILE_ID', name: 'Sumatera' },
     { key: 'jawa', kvKey: 'LATEST_RADAR_JAWA_FILE_ID', name: 'Jawa & Bali' },
