@@ -87,7 +87,7 @@
 <body>
   <div id="map">
     <div class="banner">
-      <h1>📡 PETA RADAR HUJAN REALTIME</h1>
+      <h1 id="banner-title">📡 PETA RADAR HUJAN REALTIME</h1>
       <p id="timestamp">Memuat data observasi radar...</p>
     </div>
 
@@ -104,13 +104,39 @@
   </div>
 
   <script>
-    // Pusatkan ke peta Indonesia (-2.5, 118.0) zoom 5
+    const urlParams = new URLSearchParams(window.location.search);
+    const region = urlParams.get('region') || 'nasional';
+
+    let center = [-2.2, 118.0];
+    let zoom = 5;
+    let title = "📡 PETA RADAR HUJAN REALTIME";
+
+    if (region === 'jawa') {
+      center = [-7.15, 109.8];
+      zoom = 7;
+      title = "📡 RADAR HUJAN: JAWA, BALI & SEKITARNYA";
+    } else if (region === 'sumatera') {
+      center = [-0.5, 101.5];
+      zoom = 6;
+      title = "📡 RADAR HUJAN: SUMATERA";
+    } else if (region === 'kalimantan') {
+      center = [-0.2, 113.8];
+      zoom = 6;
+      title = "📡 RADAR HUJAN: KALIMANTAN";
+    } else if (region === 'sulawesi') {
+      center = [-2.2, 121.2];
+      zoom = 6;
+      title = "📡 RADAR HUJAN: SULAWESI";
+    }
+
+    document.getElementById('banner-title').innerText = title;
+
     const map = L.map('map', {
       zoomControl: false,
       attributionControl: false
-    }).setView([-2.2, 118.0], 5);
+    }).setView(center, zoom);
 
-    // Peta dasar Esri World Street Map: lengkap dengan nama pulau, batas negara, dan kota
+    // Peta dasar Esri World Street Map
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 18,
       attribution: 'Esri'
