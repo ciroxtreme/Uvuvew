@@ -19,14 +19,17 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
-        run: npm ci || npm install
+      - name: Install System Dependencies & Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgbm-dev
+          npm install
 
-      - name: Run Radar Scraper
+      - name: Run Radar Scraper with Xvfb
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_KV_NAMESPACE_ID: ${{ secrets.CF_KV_NAMESPACE_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-        run: node scraper.js
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" node scraper.js
