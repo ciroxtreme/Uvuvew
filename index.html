@@ -194,31 +194,43 @@
     let playInterval = null;
     let userMarker = null;
 
-    // Load data radar dari RainViewer
+    // Load data radar BMKG
     async function initRadar() {
       try {
-        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-        const data = await res.json();
-        host = data.host;
-        radarFrames = data.radar.past; // Array 10-13 frame terakhir
+        const bounds = [[-2.917444 - 1.8, 104.702556 - 1.8], [-2.917444 + 1.8, 104.702556 + 1.8]];
+        // Layer satelit potensi hujan nasional
+        const himaBounds = [[20.0, 90.0], [-20.0, 150.0]];
+        L.imageOverlay('https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png', himaBounds, { opacity: 0.65, zIndex: 400 }).addTo(map);
 
-        const slider = document.getElementById('timeline');
-        slider.max = radarFrames.length - 1;
-        slider.value = radarFrames.length - 1;
-        currentIndex = radarFrames.length - 1;
+        // Ambil frame Doppler radar Sumsel dari radar.cuacasumsel.com
+        const res = await fetch('https://radar.cuacasumsel.com/');
+        const html = await res.text();
+        const matches = [...html.matchAll(/var MyDateString([0-9]{2})\s*=\s*['"]([^'"]+)['"]/g)];
 
-        // Preload radar layer
-        radarFrames.forEach((frame, idx) => {
-          const url = `${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
-          const layer = L.tileLayer(url, {
-            opacity: idx === currentIndex ? 0.75 : 0,
-            zIndex: 500
-          }).addTo(map);
-          radarLayers.push(layer);
-        });
+        if (matches.length > 0) {
+          // Urutkan dari frame terlama ke terbaru
+          radarFrames = matches.map(m => ({
+            id: m[1],
+            url: 'https://radar.cuacasumsel.com/' + m[2],
+            path: m[2]
+          })).reverse();
 
-        updateDisplayTime(currentIndex);
-        document.getElementById('status-text').innerText = 'Data radar siap';
+          const slider = document.getElementById('timeline');
+          slider.max = radarFrames.length - 1;
+          slider.value = radarFrames.length - 1;
+          currentIndex = radarFrames.length - 1;
+
+          radarFrames.forEach((frame, idx) => {
+            const layer = L.imageOverlay(frame.url, bounds, {
+              opacity: idx === currentIndex ? 0.88 : 0,
+              zIndex: 600
+            }).addTo(map);
+            radarLayers.push(layer);
+          });
+
+          updateDisplayTime(currentIndex);
+          document.getElementById('status-text').innerText = 'Radar Doppler BMKG Siap';
+        }
 
         // Langsung coba deteksi lokasi GPS begitu dibuka
         detectLocation(true);
@@ -231,7 +243,7 @@
     function showFrame(index) {
       currentIndex = index;
       radarLayers.forEach((layer, idx) => {
-        layer.setOpacity(idx === currentIndex ? 0.75 : 0);
+        layer.setOpacity(idx === currentIndex ? 0.88 : 0);
       });
       document.getElementById('timeline').value = index;
       updateDisplayTime(index);
@@ -239,13 +251,13 @@
 
     function updateDisplayTime(index) {
       if (!radarFrames[index]) return;
-      const date = new Date(radarFrames[index].time * 1000);
-      const timeStr = date.toLocaleTimeString('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) + ' WIB';
-      document.getElementById('frame-time').innerText = timeStr;
+      const f = radarFrames[index];
+      const m = f.path.match(/([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/);
+      if (m) {
+        const d = new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), parseInt(m[4]), parseInt(m[5])));
+        const timeStr = d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+        document.getElementById('frame-time').innerText = timeStr;
+      }
     }
 
     function onSlide(val) {

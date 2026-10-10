@@ -162,26 +162,32 @@
 
     async function loadRealtimeRadar() {
       try {
-        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-        if (!res.ok) throw new Error("Gagal mengambil data RainViewer: " + res.status);
-        const data = await res.json();
-        const host = data.host;
-        const latest = data.radar.past[data.radar.past.length - 1];
+        let radarUrl = "";
+        let bounds = null;
+        const isLocalDoppler = (region === 'rumah' || region === 'palembang' || region === 'sumsel');
 
-        const radarTime = new Date(latest.time * 1000);
-        const timeStr = radarTime.toLocaleString('id-ID', {
+        if (isLocalDoppler) {
+          // Radar Doppler SMB II Palembang & Sumsel (radius 1.8 deg ~ 200km)
+          radarUrl = urlParams.get('radarImg') || 'https://radar.cuacasumsel.com/radar/2026-10-10/2026101009103000dBZ.cmax.0.png';
+          bounds = [[-2.917444 - 1.8, 104.702556 - 1.8], [-2.917444 + 1.8, 104.702556 + 1.8]];
+        } else {
+          // Radar Satelit Potensi Curah Hujan BMKG Nasional
+          radarUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png';
+          bounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
+        }
+
+        const overlay = L.imageOverlay(radarUrl, bounds, {
+          opacity: 0.85,
+          zIndex: 500
+        }).addTo(map);
+
+        const now = new Date();
+        const timeStr = now.toLocaleString('id-ID', {
           timeZone: 'Asia/Jakarta',
           dateStyle: 'full',
           timeStyle: 'medium'
         });
-        document.getElementById('timestamp').innerText = 'Observasi Radar Cuaca Realtime: ' + timeStr + ' WIB';
-
-        const radarUrl = `${host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
-        const radarLayer = L.tileLayer(radarUrl, {
-          opacity: 0.85,
-          zIndex: 500,
-          maxZoom: 12
-        }).addTo(map);
+        document.getElementById('timestamp').innerText = (isLocalDoppler ? 'Observasi Radar Doppler BMKG: ' : 'Observasi Radar Hujan BMKG: ') + timeStr + ' WIB';
 
         let doneFired = false;
         const markDone = () => {
@@ -192,8 +198,8 @@
           }, 800);
         };
 
-        radarLayer.on('load', markDone);
-        radarLayer.on('tileerror', markDone);
+        overlay.on('load', markDone);
+        overlay.on('error', markDone);
         setTimeout(markDone, 4000);
       } catch (err) {
         console.error("Setup error:", err);

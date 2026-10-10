@@ -49,11 +49,25 @@ async function uploadToTelegramAndKV(buffer, caption, kvKey) {
 
 // Render Peta Radar BMKG Asli per Wilayah
 async function scrapeBMKGMaps(wibTime) {
+  // Ambil file radar Doppler terbaru dari radar.cuacasumsel.com
+  let latestRadarSumsel = null;
+  try {
+    const res = await fetch('https://radar.cuacasumsel.com/');
+    const text = await res.text();
+    const match = text.match(/var MyDateString00=\s*['"]([^'"]+)['"]/);
+    if (match && match[1]) {
+      latestRadarSumsel = 'https://radar.cuacasumsel.com/' + match[1];
+      console.log('📡 Radar Doppler BMKG Sumsel live:', latestRadarSumsel);
+    }
+  } catch (e) {
+    console.warn('Gagal ambil data cuacasumsel:', e.message);
+  }
+
   console.log("🗺️ Menjalankan browser untuk render peta radar BMKG...");
   const { browser, page } = await connect({
     headless: false,
     turnstile: false,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1200,800'],
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security', '--window-size=1200,800'],
     connectOption: {
       defaultViewport: { width: 1200, height: 750 }
     }
@@ -69,7 +83,10 @@ async function scrapeBMKGMaps(wibTime) {
 
   try {
     for (const reg of regions) {
-      const localHtmlPath = `file://${path.resolve(__dirname, 'radar-map.html')}?region=${reg.key}`;
+      let localHtmlPath = `file://${path.resolve(__dirname, 'radar-map.html')}?region=${reg.key}`;
+      if (latestRadarSumsel && (reg.key === 'rumah' || reg.key === 'palembang')) {
+        localHtmlPath += `&radarImg=${encodeURIComponent(latestRadarSumsel)}`;
+      }
       console.log(`🗺️ Merender radar BMKG [${reg.name}]...`);
       await page.goto(localHtmlPath, { waitUntil: 'networkidle2', timeout: 35000 });
       await page.waitForFunction('window.__RADAR_DONE__ === true', { timeout: 25000 });
