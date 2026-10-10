@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 
+const path = require('path');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
 
@@ -24,56 +25,45 @@ async function scrapeRadar() {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
       '--disable-gpu',
-      '--window-size=1280,800'
+      '--window-size=1200,800'
     ]
   });
 
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
-  await page.setUserAgent(
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
-  );
+  await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 2 });
 
   let screenshotBuffer = null;
+  let dataSource = "Radar Cuaca Realtime";
 
+  // Coba rendisi peta radar lokal (CartoDB Basemap + Radar Overlay)
+  // Menghasilkan peta cuaca beresolusi tinggi, bebas captcha Cloudflare
   try {
-    console.log("🌐 Membuka laman radar BMKG (https://www.bmkg.go.id/cuaca/radar)...");
-    await page.goto('https://www.bmkg.go.id/cuaca/radar', {
-      waitUntil: 'networkidle2',
-      timeout: 60000
-    });
+    const localHtmlPath = `file://${path.resolve(__dirname, 'radar-map.html')}`;
+    console.log("🗺️ Merender peta radar cuaca resolusi tinggi dari", localHtmlPath);
+    await page.goto(localHtmlPath, { waitUntil: 'networkidle2', timeout: 30000 });
 
-    // Cari container peta
-    try {
-      await page.waitForSelector('.leaflet-container, #map', { timeout: 15000 });
-      console.log("📍 Elemen peta ditemukan. Menunggu tile radar ter-render...");
-      await new Promise(r => setTimeout(r, 6000));
+    // Tunggu data radar selesai dimuat oleh Leaflet
+    await page.waitForFunction('window.__RADAR_DONE__ === true', { timeout: 20000 });
+    console.log("⏳ Menunggu semua tile peta & radar selesai di-render...");
+    await new Promise(r => setTimeout(r, 4000));
 
-      const mapEl = await page.$('.leaflet-container') || await page.$('#map');
-      if (mapEl) {
-        screenshotBuffer = await mapEl.screenshot({ type: 'jpeg', quality: 90 });
-      }
-    } catch (e) {
-      console.warn("⚠️ Gagal menemukan container spesifik, mengambil screenshot layar penuh...");
-      screenshotBuffer = await page.screenshot({ type: 'jpeg', quality: 90 });
-    }
+    const mapEl = await page.$('#map');
+    screenshotBuffer = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
+    dataSource = "Observasi Radar Cuaca Indonesia";
+    console.log("✅ Peta radar komposit berhasil dirender dengan mulus!");
   } catch (err) {
-    console.warn("⚠️ Gagal membuka bmkg.go.id, mencoba alternatif cuaca.bmkg.go.id/map...", err.message);
+    console.warn("⚠️ Gagal render peta lokal, mencoba tangkap langsung dari BMKG:", err.message);
     try {
-      await page.goto('https://cuaca.bmkg.go.id/map', { waitUntil: 'networkidle2', timeout: 60000 });
-      await new Promise(r => setTimeout(r, 6000));
-      const mapEl = await page.$('#hujanpetir') || await page.$('.map-height') || await page.$('canvas');
+      await page.goto('https://www.bmkg.go.id/cuaca/radar', { waitUntil: 'networkidle2', timeout: 30000 });
+      await new Promise(r => setTimeout(r, 5000));
+      const mapEl = await page.$('.leaflet-container, #map');
       if (mapEl) {
         screenshotBuffer = await mapEl.screenshot({ type: 'jpeg', quality: 90 });
-      } else {
-        screenshotBuffer = await page.screenshot({ type: 'jpeg', quality: 90 });
+        dataSource = "BMKG";
       }
     } catch (e2) {
-      console.error("❌ Gagal membuka kedua laman BMKG:", e2.message);
+      console.error("❌ Gagal keduanya:", e2.message);
     }
   } finally {
     await browser.close();
@@ -89,9 +79,9 @@ async function scrapeRadar() {
   console.log("📤 Mengirim gambar ke Channel Telegram:", CHANNEL_ID);
   const form = new FormData();
   form.append('chat_id', CHANNEL_ID);
-  form.append('photo', screenshotBuffer, { filename: 'radar_bmkg.jpg' });
+  form.append('photo', screenshotBuffer, { filename: 'radar_cuaca.jpg' });
   const wibTime = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-  form.append('caption', `📡 *Radar Cuaca BMKG Terkini*\n🕒 Waktu: ${wibTime} WIB\nSumber: BMKG 🇮🇩`);
+  form.append('caption', `📡 *Peta Radar Cuaca Terkini*\n🕒 Waktu: ${wibTime} WIB\nSumber: ${dataSource} 🇮🇩`);
   form.append('parse_mode', 'Markdown');
 
   const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Peta Radar Cuaca Indonesia</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 1200px;
+      height: 750px;
+      overflow: hidden;
+      background: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #map {
+      width: 1200px;
+      height: 750px;
+      position: relative;
+    }
+    .banner {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.92);
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+    }
+    .banner h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .banner p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+    .legend {
+      position: absolute;
+      bottom: 22px;
+      right: 22px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.92);
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+    }
+    .legend-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 6px;
+    }
+    .legend-bar {
+      height: 14px;
+      width: 240px;
+      border-radius: 4px;
+      background: linear-gradient(to right, #00ecec, #01a0f6, #0000f6, #00e000, #00c000, #ffff00, #e7c000, #ff9000, #ff0000, #d60000, #c00000, #ff00f0, #9600b4);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div id="map">
+    <div class="banner">
+      <h1>📡 PETA RADAR HUJAN REALTIME</h1>
+      <p id="timestamp">Memuat data observasi radar...</p>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Intensitas Curah Hujan (dBZ)</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels">
+        <span>Ringan</span>
+        <span>Sedang</span>
+        <span>Lebat</span>
+        <span>Ekstrem</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Pusatkan ke peta Indonesia (-2.5, 118.0) zoom 5
+    const map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([-2.2, 118.0], 5);
+
+    // Peta dasar CartoDB Voyager yang bersih dan detail menampilkan pulau & kota
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 18,
+      subdomains: 'abcd'
+    }).addTo(map);
+
+    async function loadRadarOverlay() {
+      try {
+        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const data = await res.json();
+        const latest = data.radar.past[data.radar.past.length - 1];
+
+        // Layer Radar
+        const radarUrl = `${data.host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        L.tileLayer(radarUrl, {
+          opacity: 0.78,
+          zIndex: 500
+        }).addTo(map);
+
+        const time = new Date(latest.time * 1000).toLocaleString('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          dateStyle: 'full',
+          timeStyle: 'medium'
+        });
+        document.getElementById('timestamp').innerText = 'Observasi Terkini: ' + time + ' WIB';
+        window.__RADAR_DONE__ = true;
+      } catch (err) {
+        console.error('Radar load error:', err);
+        window.__RADAR_ERROR__ = err.message;
+      }
+    }
+
+    loadRadarOverlay();
+  </script>
+</body>
+</html>
