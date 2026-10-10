@@ -22,7 +22,7 @@ jobs:
       - name: Install System Dependencies & Xvfb
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgbm-dev
+          sudo apt-get install -y xvfb libgbm-dev ffmpeg
           npm install
 
       - name: Run Radar Scraper with Xvfb

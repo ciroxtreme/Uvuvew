@@ -160,47 +160,91 @@
       attribution: 'Esri'
     }).addTo(map);
 
+    window.radarOverlays = [];
+    window.radarFrameTimes = [];
+    window.setRadarFrame = function(idx) {
+      if (!window.radarOverlays || window.radarOverlays.length === 0) return;
+      window.radarOverlays.forEach((ovl, i) => {
+        ovl.setOpacity(i === idx ? 0.85 : 0);
+      });
+      if (window.radarFrameTimes && window.radarFrameTimes[idx]) {
+        document.getElementById('timestamp').innerText = 'Observasi Radar Doppler BMKG: ' + window.radarFrameTimes[idx];
+      }
+    };
+
     async function loadRealtimeRadar() {
       try {
-        let radarUrl = "";
-        let bounds = null;
         const isLocalDoppler = (region === 'rumah' || region === 'palembang' || region === 'sumsel');
 
         if (isLocalDoppler) {
-          // Radar Doppler SMB II Palembang & Sumsel (radius 1.8 deg ~ 200km)
-          radarUrl = urlParams.get('radarImg') || 'https://radar.cuacasumsel.com/radar/2026-10-10/2026101009103000dBZ.cmax.0.png';
-          bounds = [[-2.917444 - 1.8, 104.702556 - 1.8], [-2.917444 + 1.8, 104.702556 + 1.8]];
+          const bounds = [[-2.917444 - 1.8, 104.702556 - 1.8], [-2.917444 + 1.8, 104.702556 + 1.8]];
+          
+          let frames = [];
+          try {
+            const res = await fetch('https://radar.cuacasumsel.com/');
+            const html = await res.text();
+            const matches = [...html.matchAll(/var MyDateString([0-9]{2})\s*=\s*['"]([^'"]+)['"]/g)];
+            if (matches.length > 0) {
+              frames = matches.map(m => {
+                const path = m[2];
+                const matchTime = path.match(/([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/);
+                let timeLabel = "";
+                if (matchTime) {
+                  const d = new Date(Date.UTC(parseInt(matchTime[1]), parseInt(matchTime[2]) - 1, parseInt(matchTime[3]), parseInt(matchTime[4]), parseInt(matchTime[5])));
+                  timeLabel = d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                }
+                return {
+                  url: 'https://radar.cuacasumsel.com/' + path,
+                  timeLabel
+                };
+              }).reverse();
+            }
+          } catch(e) {
+            console.warn("Gagal fetch daftar frame radar:", e);
+          }
+
+          if (frames.length === 0) {
+            frames = [{
+              url: urlParams.get('radarImg') || 'https://radar.cuacasumsel.com/radar/2026-10-10/2026101009103000dBZ.cmax.0.png',
+              timeLabel: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB'
+            }];
+          }
+
+          window.radarFrameTimes = frames.map(f => f.timeLabel);
+          window.radarOverlays = [];
+
+          frames.forEach((f, idx) => {
+            const isLatest = (idx === frames.length - 1);
+            const ovl = L.imageOverlay(f.url, bounds, {
+              opacity: isLatest ? 0.85 : 0,
+              zIndex: 500 + idx
+            }).addTo(map);
+            window.radarOverlays.push(ovl);
+          });
+
+          document.getElementById('timestamp').innerText = 'Observasi Radar Doppler BMKG: ' + frames[frames.length - 1].timeLabel;
+          setTimeout(() => { window.__RADAR_DONE__ = true; }, 1200);
         } else {
           // Radar Satelit Potensi Curah Hujan BMKG Nasional
-          radarUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png';
-          bounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
+          const himaUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png';
+          const bounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
+          const overlay = L.imageOverlay(himaUrl, bounds, {
+            opacity: 0.85,
+            zIndex: 500
+          }).addTo(map);
+
+          const now = new Date();
+          const timeStr = now.toLocaleString('id-ID', {
+            timeZone: 'Asia/Jakarta',
+            dateStyle: 'full',
+            timeStyle: 'medium'
+          });
+          document.getElementById('timestamp').innerText = 'Observasi Radar Hujan BMKG: ' + timeStr + ' WIB';
+
+          overlay.on('load', () => { setTimeout(() => { window.__RADAR_DONE__ = true; }, 800); });
+          overlay.on('error', () => { setTimeout(() => { window.__RADAR_DONE__ = true; }, 800); });
+          setTimeout(() => { window.__RADAR_DONE__ = true; }, 3500);
         }
-
-        const overlay = L.imageOverlay(radarUrl, bounds, {
-          opacity: 0.85,
-          zIndex: 500
-        }).addTo(map);
-
-        const now = new Date();
-        const timeStr = now.toLocaleString('id-ID', {
-          timeZone: 'Asia/Jakarta',
-          dateStyle: 'full',
-          timeStyle: 'medium'
-        });
-        document.getElementById('timestamp').innerText = (isLocalDoppler ? 'Observasi Radar Doppler BMKG: ' : 'Observasi Radar Hujan BMKG: ') + timeStr + ' WIB';
-
-        let doneFired = false;
-        const markDone = () => {
-          if (doneFired) return;
-          doneFired = true;
-          setTimeout(() => {
-            window.__RADAR_DONE__ = true;
-          }, 800);
-        };
-
-        overlay.on('load', markDone);
-        overlay.on('error', markDone);
-        setTimeout(markDone, 4000);
       } catch (err) {
         console.error("Setup error:", err);
         window.__RADAR_ERROR__ = err.message;
