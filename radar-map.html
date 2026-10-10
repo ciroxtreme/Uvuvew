@@ -110,10 +110,10 @@
       attributionControl: false
     }).setView([-2.2, 118.0], 5);
 
-    // Peta dasar CartoDB Voyager yang bersih dan detail menampilkan pulau & kota
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    // Peta dasar Esri World Street Map: lengkap dengan nama pulau, batas negara, dan kota
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 18,
-      subdomains: 'abcd'
+      attribution: 'Esri'
     }).addTo(map);
 
     async function loadRadarOverlay() {
