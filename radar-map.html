@@ -160,47 +160,50 @@
       attribution: 'Esri'
     }).addTo(map);
 
-    function loadBMKGRadar() {
+    async function loadRealtimeRadar() {
       try {
-        const bounds = map.getBounds();
-        const sw = L.CRS.EPSG3857.project(bounds.getSouthWest());
-        const ne = L.CRS.EPSG3857.project(bounds.getNorthEast());
-        const bbox = `${sw.x},${sw.y},${ne.x},${ne.y}`;
-        const size = map.getSize();
+        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        if (!res.ok) throw new Error("Gagal mengambil data RainViewer: " + res.status);
+        const data = await res.json();
+        const host = data.host;
+        const latest = data.radar.past[data.radar.past.length - 1];
 
-        // Parameter export EPSG:3857 yang 1:1 presisi dengan proyeksi Leaflet!
-        const radarUrl = `https://gis.bmkg.go.id/arcgis/rest/services/radarcmax/MapServer/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size.x},${size.y}&format=png&transparent=true&f=image&_ts=${Date.now()}`;
+        const radarTime = new Date(latest.time * 1000);
+        const timeStr = radarTime.toLocaleString('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          dateStyle: 'full',
+          timeStyle: 'medium'
+        });
+        document.getElementById('timestamp').innerText = 'Observasi Radar Cuaca Realtime: ' + timeStr + ' WIB';
 
-        const overlay = L.imageOverlay(radarUrl, bounds, {
-          opacity: 0.88,
-          zIndex: 500
+        const radarUrl = `${host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        const radarLayer = L.tileLayer(radarUrl, {
+          opacity: 0.85,
+          zIndex: 500,
+          maxZoom: 12
         }).addTo(map);
 
-        overlay.on('load', () => {
-          const now = new Date();
-          const timeStr = now.toLocaleString('id-ID', {
-            timeZone: 'Asia/Jakarta',
-            dateStyle: 'full',
-            timeStyle: 'medium'
-          });
-          document.getElementById('timestamp').innerText = 'Observasi Radar CMAX BMKG Terkini: ' + timeStr + ' WIB';
+        let doneFired = false;
+        const markDone = () => {
+          if (doneFired) return;
+          doneFired = true;
           setTimeout(() => {
             window.__RADAR_DONE__ = true;
           }, 800);
-        });
+        };
 
-        overlay.on('error', (err) => {
-          console.error("Overlay load error:", err);
-          window.__RADAR_ERROR__ = "Gagal memuat radar BMKG";
-        });
+        radarLayer.on('load', markDone);
+        radarLayer.on('tileerror', markDone);
+        setTimeout(markDone, 4000);
       } catch (err) {
         console.error("Setup error:", err);
         window.__RADAR_ERROR__ = err.message;
+        window.__RADAR_DONE__ = true;
       }
     }
 
     map.whenReady(() => {
-      setTimeout(loadBMKGRadar, 500);
+      setTimeout(loadRealtimeRadar, 400);
     });
   </script>
 </body>

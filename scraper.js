@@ -81,7 +81,7 @@ async function scrapeBMKGMaps(wibTime) {
 
       await uploadToTelegramAndKV(
         buffer,
-        `📡 *Radar Cuaca BMKG: ${reg.name}*\n🕒 Waktu: ${wibTime} WIB\nSumber: Radar CMAX BMKG 🇮🇩`,
+        `📡 *Radar Cuaca Terkini: ${reg.name}*\n🕒 Waktu: ${wibTime} WIB\nSumber: Radar Cuaca Realtime 🇮🇩`,
         reg.kvKey
       );
       console.log(`✅ [${reg.name}] tersimpan ke KV (${reg.kvKey})!`);
