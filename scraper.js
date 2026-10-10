@@ -47,63 +47,9 @@ async function uploadToTelegramAndKV(buffer, caption, kvKey) {
   return fileId;
 }
 
-// OPSI 1: Buka langsung situs radar BMKG asli dengan Cloudflare Turnstile Solver
-async function scrapeBMKGDirect(wibTime) {
-  console.log("🚀 [Opsi 1] Menjalankan Real-Browser untuk membuka bmkg.go.id/cuaca/radar...");
-  let response;
-  try {
-    response = await connect({
-      headless: false,
-      turnstile: true, // Otomatis solve Cloudflare Turnstile!
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1280,800'],
-      connectOption: {
-        defaultViewport: { width: 1280, height: 800 }
-      }
-    });
-  } catch (launchErr) {
-    console.warn("⚠️ Gagal launch real-browser:", launchErr.message);
-    return false;
-  }
-
-  const { browser, page } = response;
-
-  try {
-    console.log("🌐 Membuka https://www.bmkg.go.id/cuaca/radar ...");
-    await page.goto('https://www.bmkg.go.id/cuaca/radar', {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000
-    });
-
-    console.log("⏳ Menunggu verifikasi Cloudflare dan container peta BMKG...");
-    await page.waitForSelector('.leaflet-container, #map', { timeout: 40000 });
-    console.log("🎉 Peta Leaflet BMKG asli berhasil terbuka!");
-
-    // Tunggu tile radar BMKG (termasuk radar Padang / BIM, Jawa, dll.) selesai dirender
-    await new Promise(r => setTimeout(r, 8000));
-
-    const mapEl = await page.$('.leaflet-container') || await page.$('#map');
-    const screenshot = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
-    const buffer = Buffer.from(screenshot);
-
-    await uploadToTelegramAndKV(
-      buffer,
-      `📡 *Peta Radar Cuaca BMKG Resmi (Asli)*\n🕒 Waktu: ${wibTime} WIB\nSumber: BMKG (SIDARMA) 🇮🇩`,
-      'LATEST_RADAR_FILE_ID'
-    );
-
-    console.log("✅ Radar BMKG asli berhasil di-capture dan di-upload ke KV!");
-    return true;
-  } catch (err) {
-    console.warn("⚠️ Gagal menembus radar BMKG asli:", err.message);
-    return false;
-  } finally {
-    try { await browser.close(); } catch (e) {}
-  }
-}
-
-// Cadangan / Multi-Region Renderer
-async function scrapeRegionalMaps(wibTime, skipNasional = false) {
-  console.log("🗺️ Merender peta wilayah...");
+// Render Peta Radar BMKG Asli per Wilayah
+async function scrapeBMKGMaps(wibTime) {
+  console.log("🗺️ Menjalankan browser untuk render peta radar BMKG...");
   const { browser, page } = await connect({
     headless: false,
     turnstile: false,
@@ -114,18 +60,19 @@ async function scrapeRegionalMaps(wibTime, skipNasional = false) {
   });
 
   const regions = [
-    ...(skipNasional ? [] : [{ key: 'nasional', kvKey: 'LATEST_RADAR_FILE_ID', name: 'Nasional' }]),
+    { key: 'palembang', kvKey: 'LATEST_RADAR_PALEMBANG_FILE_ID', name: 'Palembang & Sumsel' },
+    { key: 'sumatera', kvKey: 'LATEST_RADAR_SUMATERA_FILE_ID', name: 'Sumatera' },
     { key: 'jawa', kvKey: 'LATEST_RADAR_JAWA_FILE_ID', name: 'Jawa & Bali' },
-    { key: 'sumatera', kvKey: 'LATEST_RADAR_SUMATERA_FILE_ID', name: 'Sumatera' }
+    { key: 'nasional', kvKey: 'LATEST_RADAR_FILE_ID', name: 'Nasional' }
   ];
 
   try {
     for (const reg of regions) {
       const localHtmlPath = `file://${path.resolve(__dirname, 'radar-map.html')}?region=${reg.key}`;
-      console.log(`🗺️ Merender [${reg.name}]...`);
-      await page.goto(localHtmlPath, { waitUntil: 'networkidle2', timeout: 30000 });
-      await page.waitForFunction('window.__RADAR_DONE__ === true', { timeout: 20000 });
-      await new Promise(r => setTimeout(r, 3000));
+      console.log(`🗺️ Merender radar BMKG [${reg.name}]...`);
+      await page.goto(localHtmlPath, { waitUntil: 'networkidle2', timeout: 35000 });
+      await page.waitForFunction('window.__RADAR_DONE__ === true', { timeout: 25000 });
+      await new Promise(r => setTimeout(r, 1500));
 
       const mapEl = await page.$('#map');
       const screenshot = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
@@ -133,10 +80,10 @@ async function scrapeRegionalMaps(wibTime, skipNasional = false) {
 
       await uploadToTelegramAndKV(
         buffer,
-        `📡 *Peta Radar Cuaca: ${reg.name}*\n🕒 Waktu: ${wibTime} WIB\nSumber: Observasi Radar Realtime 🇮🇩`,
+        `📡 *Radar Cuaca BMKG: ${reg.name}*\n🕒 Waktu: ${wibTime} WIB\nSumber: Radar CMAX BMKG 🇮🇩`,
         reg.kvKey
       );
-      console.log(`✅ [${reg.name}] tersimpan ke KV!`);
+      console.log(`✅ [${reg.name}] tersimpan ke KV (${reg.kvKey})!`);
     }
   } finally {
     try { await browser.close(); } catch (e) {}
@@ -145,15 +92,12 @@ async function scrapeRegionalMaps(wibTime, skipNasional = false) {
 
 async function run() {
   const wibTime = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-  
-  // 1. Coba ambil radar BMKG asli
-  const bmkgSuccess = await scrapeBMKGDirect(wibTime);
+  console.log("🚀 Memulai proses update radar BMKG:", wibTime);
 
-  // 2. Render peta regional (Jawa & Sumatera)
-  // Jika radar BMKG asli gagal, render juga peta nasional sebagai cadangan
-  await scrapeRegionalMaps(wibTime, bmkgSuccess);
+  // Render semua wilayah (Palembang, Sumatera, Jawa, Nasional)
+  await scrapeBMKGMaps(wibTime);
 
-  // 3. Simpan update timestamp
+  // Simpan timestamp update terakhir
   const kvTimeUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_TIME`;
   await fetch(kvTimeUrl, {
     method: 'PUT',
@@ -164,7 +108,7 @@ async function run() {
     body: wibTime
   });
 
-  console.log("🎉 PROSES SCRAPER SELESAI SEMPURNA!");
+  console.log("🎉 PROSES UPDATE RADAR BMKG SELESAI SEMPURNA!");
 }
 
 run().catch(err => {

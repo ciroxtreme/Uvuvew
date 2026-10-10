@@ -220,11 +220,39 @@
         updateDisplayTime(currentIndex);
         document.getElementById('status-text').innerText = 'Data radar siap';
 
+        // Tampilkan layer Radar CMAX BMKG Realtime
+        updateBMKGLayer();
+        map.on('moveend', updateBMKGLayer);
+
         // Langsung coba deteksi lokasi GPS begitu dibuka
         detectLocation(true);
       } catch (err) {
         document.getElementById('status-text').innerText = 'Gagal memuat radar';
         console.error(err);
+      }
+    }
+
+    let bmkgOverlay = null;
+    function updateBMKGLayer() {
+      try {
+        const bounds = map.getBounds();
+        const sw = L.CRS.EPSG3857.project(bounds.getSouthWest());
+        const ne = L.CRS.EPSG3857.project(bounds.getNorthEast());
+        const bbox = `${sw.x},${sw.y},${ne.x},${ne.y}`;
+        const size = map.getSize();
+        if (size.x <= 0 || size.y <= 0) return;
+
+        const radarUrl = `https://gis.bmkg.go.id/arcgis/rest/services/radarcmax/MapServer/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size.x},${size.y}&format=png&transparent=true&f=image&_ts=${Date.now()}`;
+
+        if (bmkgOverlay) {
+          map.removeLayer(bmkgOverlay);
+        }
+        bmkgOverlay = L.imageOverlay(radarUrl, bounds, {
+          opacity: 0.85,
+          zIndex: 600
+        }).addTo(map);
+      } catch (e) {
+        console.error("BMKG overlay error:", e);
       }
     }
 

@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="utf-8" />
-  <title>Peta Radar Cuaca Indonesia</title>
+  <title>Peta Radar Cuaca BMKG Indonesia</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -69,9 +69,9 @@
     }
     .legend-bar {
       height: 14px;
-      width: 240px;
+      width: 260px;
       border-radius: 4px;
-      background: linear-gradient(to right, #00ecec, #01a0f6, #0000f6, #00e000, #00c000, #ffff00, #e7c000, #ff9000, #ff0000, #d60000, #c00000, #ff00f0, #9600b4);
+      background: linear-gradient(to right, #005ce6, #00c5ff, #38a800, #4ce600, #ffff00, #ffd37f, #e69800, #ff0000);
       box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
     }
     .legend-labels {
@@ -87,46 +87,50 @@
 <body>
   <div id="map">
     <div class="banner">
-      <h1 id="banner-title">📡 PETA RADAR HUJAN REALTIME</h1>
-      <p id="timestamp">Memuat data observasi radar...</p>
+      <h1 id="banner-title">📡 PETA RADAR HUJAN BMKG</h1>
+      <p id="timestamp">Memuat data observasi radar BMKG...</p>
     </div>
 
     <div class="legend">
-      <div class="legend-title">Intensitas Curah Hujan (dBZ)</div>
+      <div class="legend-title">Reflektivitas Radar BMKG (dBZ)</div>
       <div class="legend-bar"></div>
       <div class="legend-labels">
-        <span>Ringan</span>
-        <span>Sedang</span>
-        <span>Lebat</span>
-        <span>Ekstrem</span>
+        <span>Ringan (5)</span>
+        <span>Sedang (25)</span>
+        <span>Lebat (40)</span>
+        <span>Ekstrem (>55)</span>
       </div>
     </div>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const region = urlParams.get('region') || 'nasional';
+    const region = (urlParams.get('region') || 'nasional').toLowerCase();
 
     let center = [-2.2, 118.0];
     let zoom = 5;
-    let title = "📡 PETA RADAR HUJAN REALTIME";
+    let title = "📡 RADAR BMKG: NASIONAL (INDONESIA)";
 
-    if (region === 'jawa') {
+    if (region === 'palembang' || region === 'sumsel') {
+      center = [-2.99, 104.75];
+      zoom = 8;
+      title = "📡 RADAR BMKG: PALEMBANG & SUMSEL";
+    } else if (region === 'jawa') {
       center = [-7.15, 109.8];
       zoom = 7;
-      title = "📡 RADAR HUJAN: JAWA, BALI & SEKITARNYA";
+      title = "📡 RADAR BMKG: JAWA, BALI & SEKITARNYA";
     } else if (region === 'sumatera') {
       center = [-0.5, 101.5];
       zoom = 6;
-      title = "📡 RADAR HUJAN: SUMATERA";
+      title = "📡 RADAR BMKG: SUMATERA";
     } else if (region === 'kalimantan') {
       center = [-0.2, 113.8];
       zoom = 6;
-      title = "📡 RADAR HUJAN: KALIMANTAN";
+      title = "📡 RADAR BMKG: KALIMANTAN";
     } else if (region === 'sulawesi') {
       center = [-2.2, 121.2];
       zoom = 6;
-      title = "📡 RADAR HUJAN: SULAWESI";
+      title = "📡 RADAR BMKG: SULAWESI";
     }
 
     document.getElementById('banner-title').innerText = title;
@@ -136,39 +140,54 @@
       attributionControl: false
     }).setView(center, zoom);
 
-    // Peta dasar Esri World Street Map
+    // Peta dasar Esri World Street Map (peta jalan & nama kota yang sangat jelas)
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 18,
       attribution: 'Esri'
     }).addTo(map);
 
-    async function loadRadarOverlay() {
+    function loadBMKGRadar() {
       try {
-        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-        const data = await res.json();
-        const latest = data.radar.past[data.radar.past.length - 1];
+        const bounds = map.getBounds();
+        const sw = L.CRS.EPSG3857.project(bounds.getSouthWest());
+        const ne = L.CRS.EPSG3857.project(bounds.getNorthEast());
+        const bbox = `${sw.x},${sw.y},${ne.x},${ne.y}`;
+        const size = map.getSize();
 
-        // Layer Radar
-        const radarUrl = `${data.host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
-        L.tileLayer(radarUrl, {
-          opacity: 0.78,
+        // Parameter export EPSG:3857 yang 1:1 presisi dengan proyeksi Leaflet!
+        const radarUrl = `https://gis.bmkg.go.id/arcgis/rest/services/radarcmax/MapServer/export?bbox=${bbox}&bboxSR=3857&imageSR=3857&size=${size.x},${size.y}&format=png&transparent=true&f=image&_ts=${Date.now()}`;
+
+        const overlay = L.imageOverlay(radarUrl, bounds, {
+          opacity: 0.88,
           zIndex: 500
         }).addTo(map);
 
-        const time = new Date(latest.time * 1000).toLocaleString('id-ID', {
-          timeZone: 'Asia/Jakarta',
-          dateStyle: 'full',
-          timeStyle: 'medium'
+        overlay.on('load', () => {
+          const now = new Date();
+          const timeStr = now.toLocaleString('id-ID', {
+            timeZone: 'Asia/Jakarta',
+            dateStyle: 'full',
+            timeStyle: 'medium'
+          });
+          document.getElementById('timestamp').innerText = 'Observasi Radar CMAX BMKG Terkini: ' + timeStr + ' WIB';
+          setTimeout(() => {
+            window.__RADAR_DONE__ = true;
+          }, 800);
         });
-        document.getElementById('timestamp').innerText = 'Observasi Terkini: ' + time + ' WIB';
-        window.__RADAR_DONE__ = true;
+
+        overlay.on('error', (err) => {
+          console.error("Overlay load error:", err);
+          window.__RADAR_ERROR__ = "Gagal memuat radar BMKG";
+        });
       } catch (err) {
-        console.error('Radar load error:', err);
+        console.error("Setup error:", err);
         window.__RADAR_ERROR__ = err.message;
       }
     }
 
-    loadRadarOverlay();
+    map.whenReady(() => {
+      setTimeout(loadBMKGRadar, 500);
+    });
   </script>
 </body>
 </html>
