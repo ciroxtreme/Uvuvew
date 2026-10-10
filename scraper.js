@@ -82,7 +82,8 @@ async function scrapeBMKGDirect(wibTime) {
     await new Promise(r => setTimeout(r, 8000));
 
     const mapEl = await page.$('.leaflet-container') || await page.$('#map');
-    const buffer = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
+    const screenshot = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
+    const buffer = Buffer.from(screenshot);
 
     await uploadToTelegramAndKV(
       buffer,
@@ -127,7 +128,8 @@ async function scrapeRegionalMaps(wibTime, skipNasional = false) {
       await new Promise(r => setTimeout(r, 3000));
 
       const mapEl = await page.$('#map');
-      const buffer = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
+      const screenshot = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
+      const buffer = Buffer.from(screenshot);
 
       await uploadToTelegramAndKV(
         buffer,
