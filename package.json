@@ -1,0 +1,16 @@
+{
+  "name": "radar-bmkg-scraper",
+  "version": "1.0.0",
+  "description": "Automated BMKG Weather Radar Scraper to Telegram & Cloudflare KV",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js"
+  },
+  "dependencies": {
+    "form-data": "^4.0.0",
+    "node-fetch": "^2.7.0",
+    "puppeteer": "^22.6.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
