@@ -103,8 +103,9 @@ async function uploadAnimationToTelegramAndKV(videoPath, caption, kvKey) {
 
 // Render Peta Radar BMKG Asli per Wilayah
 async function scrapeBMKGMaps(wibTime) {
-  // Ambil file radar Doppler terbaru dari radar.cuacasumsel.com
+  // Ambil file radar Doppler terbaru & simpan daftar frame
   let latestRadarSumsel = null;
+  let obsTimeSumsel = null;
   try {
     const res = await fetch('https://radar.cuacasumsel.com/');
     const text = await res.text();
@@ -112,6 +113,51 @@ async function scrapeBMKGMaps(wibTime) {
     if (match && match[1]) {
       latestRadarSumsel = 'https://radar.cuacasumsel.com/' + match[1];
       console.log('📡 Radar Doppler BMKG Sumsel live:', latestRadarSumsel);
+    }
+
+    const matches = [...text.matchAll(/var MyDateString([0-9]{2})\s*=\s*['"]([^'"]+)['"]/g)];
+    if (matches.length > 0) {
+      const frames = matches.map(m => {
+        const path = m[2];
+        const matchTime = path.match(/([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/);
+        let timeLabel = "";
+        if (matchTime) {
+          const d = new Date(Date.UTC(parseInt(matchTime[1]), parseInt(matchTime[2]) - 1, parseInt(matchTime[3]), parseInt(matchTime[4]), parseInt(matchTime[5])));
+          timeLabel = d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+        }
+        return {
+          id: m[1],
+          url: 'https://radar.cuacasumsel.com/' + path,
+          path: path,
+          timeLabel: timeLabel
+        };
+      }).reverse();
+
+      if (frames.length > 0) {
+        obsTimeSumsel = frames[frames.length - 1].timeLabel;
+      }
+
+      const framesData = {
+        updatedAt: new Date().toISOString(),
+        wibTime: wibTime,
+        obsTime: obsTimeSumsel,
+        frames: frames
+      };
+
+      // Tulis file radar-frames.json untuk static hosting di GitHub Pages
+      fs.writeFileSync(path.resolve(__dirname, 'radar-frames.json'), JSON.stringify(framesData, null, 2));
+
+      // Simpan ke Cloudflare KV
+      const kvFramesUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_FRAMES`;
+      await fetch(kvFramesUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${CF_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(framesData)
+      });
+      console.log('✅ Daftar frame radar tersimpan ke radar-frames.json & Cloudflare KV (LATEST_RADAR_FRAMES)!');
     }
   } catch (e) {
     console.warn('Gagal ambil data cuacasumsel:', e.message);
@@ -230,6 +276,17 @@ async function run() {
       'Content-Type': 'text/plain'
     },
     body: wibTime
+  });
+
+  // Simpan timestamp epoch ms untuk deteksi stale data di Worker
+  const kvMsUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_TIMESTAMP_MS`;
+  await fetch(kvMsUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${CF_API_TOKEN}`,
+      'Content-Type': 'text/plain'
+    },
+    body: String(Date.now())
   });
 
   console.log("🎉 PROSES UPDATE RADAR BMKG SELESAI SEMPURNA!");
