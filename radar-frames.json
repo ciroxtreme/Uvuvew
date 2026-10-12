@@ -1,49 +1,49 @@
 {
-  "updatedAt": "2026-10-12T04:01:57.406Z",
-  "wibTime": "12/10/2026, 11.01.54",
-  "obsTime": "10.50 WIB",
+  "updatedAt": "2026-10-12T04:16:26.797Z",
+  "wibTime": "12/10/2026, 11.16.23",
+  "obsTime": "11.10 WIB",
   "frames": [
     {
       "id": "60",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101202504100dBZ.cmax.0.png",
-      "path": "radar/2026-10-12/2026101202504100dBZ.cmax.0.png",
-      "timeLabel": "09.50 WIB"
-    },
-    {
-      "id": "50",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101203004100dBZ.cmax.0.png",
-      "path": "radar/2026-10-12/2026101203004100dBZ.cmax.0.png",
-      "timeLabel": "10.00 WIB"
-    },
-    {
-      "id": "40",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101203104100dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101203104100dBZ.cmax.0.png",
       "timeLabel": "10.10 WIB"
     },
     {
-      "id": "30",
+      "id": "50",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101203204200dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101203204200dBZ.cmax.0.png",
       "timeLabel": "10.20 WIB"
     },
     {
-      "id": "20",
+      "id": "40",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101203304200dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101203304200dBZ.cmax.0.png",
       "timeLabel": "10.30 WIB"
     },
     {
-      "id": "10",
+      "id": "30",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101203404200dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101203404200dBZ.cmax.0.png",
       "timeLabel": "10.40 WIB"
     },
     {
-      "id": "00",
+      "id": "20",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101203504200dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101203504200dBZ.cmax.0.png",
       "timeLabel": "10.50 WIB"
+    },
+    {
+      "id": "10",
+      "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101204004200dBZ.cmax.0.png",
+      "path": "radar/2026-10-12/2026101204004200dBZ.cmax.0.png",
+      "timeLabel": "11.00 WIB"
+    },
+    {
+      "id": "00",
+      "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101204104200dBZ.cmax.0.png",
+      "path": "radar/2026-10-12/2026101204104200dBZ.cmax.0.png",
+      "timeLabel": "11.10 WIB"
     }
   ]
 }
