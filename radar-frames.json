@@ -1,49 +1,49 @@
 {
-  "updatedAt": "2026-10-12T19:24:47.968Z",
-  "wibTime": "13/10/2026, 02.24.44",
-  "obsTime": "02.10 WIB",
+  "updatedAt": "2026-10-12T19:32:02.021Z",
+  "wibTime": "13/10/2026, 02.31.58",
+  "obsTime": "02.20 WIB",
   "frames": [
     {
       "id": "60",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101218104600dBZ.cmax.0.png",
-      "path": "radar/2026-10-12/2026101218104600dBZ.cmax.0.png",
-      "timeLabel": "01.10 WIB"
-    },
-    {
-      "id": "50",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101218204600dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101218204600dBZ.cmax.0.png",
       "timeLabel": "01.20 WIB"
     },
     {
-      "id": "40",
+      "id": "50",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101218304600dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101218304600dBZ.cmax.0.png",
       "timeLabel": "01.30 WIB"
     },
     {
-      "id": "30",
+      "id": "40",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101218404600dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101218404600dBZ.cmax.0.png",
       "timeLabel": "01.40 WIB"
     },
     {
-      "id": "20",
+      "id": "30",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101218504600dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101218504600dBZ.cmax.0.png",
       "timeLabel": "01.50 WIB"
     },
     {
-      "id": "10",
+      "id": "20",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101219004600dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101219004600dBZ.cmax.0.png",
       "timeLabel": "02.00 WIB"
     },
     {
-      "id": "00",
+      "id": "10",
       "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101219104600dBZ.cmax.0.png",
       "path": "radar/2026-10-12/2026101219104600dBZ.cmax.0.png",
       "timeLabel": "02.10 WIB"
+    },
+    {
+      "id": "00",
+      "url": "https://radar.cuacasumsel.com/radar/2026-10-12/2026101219204600dBZ.cmax.0.png",
+      "path": "radar/2026-10-12/2026101219204600dBZ.cmax.0.png",
+      "timeLabel": "02.20 WIB"
     }
   ]
 }
