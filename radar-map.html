@@ -114,11 +114,11 @@
     if (region === 'rumah') {
       center = [-2.5858, 104.12295];
       zoom = 10;
-      title = "🏠 RADAR BMKG: SEKITAR RUMAH (SUNGAI LILIN)";
+      title = "🏠 RADAR & SATELIT: SEKITAR RUMAH (SUNGAI LILIN)";
     } else if (region === 'palembang' || region === 'sumsel') {
       center = [-2.99, 104.75];
       zoom = 8;
-      title = "📡 RADAR BMKG: PALEMBANG & SUMSEL";
+      title = "📡 RADAR & SATELIT: PALEMBANG & SUMSEL";
     } else if (region === 'jawa') {
       center = [-7.15, 109.8];
       zoom = 7;
@@ -176,6 +176,14 @@
       try {
         const isLocalDoppler = (region === 'rumah' || region === 'palembang' || region === 'sumsel');
 
+        // Lapisan Citra Satelit Potensi Curah Hujan Himawari-9 (selalu dinamis & up to date)
+        const himaUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png?_t=' + Date.now();
+        const himaBounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
+        L.imageOverlay(himaUrl, himaBounds, {
+          opacity: isLocalDoppler ? 0.50 : 0.85,
+          zIndex: 350
+        }).addTo(map);
+
         if (isLocalDoppler) {
           const bounds = [[-2.917444 - 1.8, 104.702556 - 1.8], [-2.917444 + 1.8, 104.702556 + 1.8]];
           
@@ -203,47 +211,46 @@
             console.warn("Gagal fetch daftar frame radar:", e);
           }
 
-          if (frames.length === 0) {
+          if (frames.length === 0 && urlParams.get('radarImg')) {
             frames = [{
-              url: urlParams.get('radarImg') || 'https://radar.cuacasumsel.com/radar/2026-10-10/2026101009103000dBZ.cmax.0.png',
+              url: urlParams.get('radarImg'),
               timeLabel: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB'
             }];
           }
 
-          window.radarFrameTimes = frames.map(f => f.timeLabel);
-          window.radarOverlays = [];
+          if (frames.length > 0) {
+            window.radarFrameTimes = frames.map(f => f.timeLabel);
+            window.radarOverlays = [];
 
-          frames.forEach((f, idx) => {
-            const isLatest = (idx === frames.length - 1);
-            const ovl = L.imageOverlay(f.url, bounds, {
-              opacity: isLatest ? 0.85 : 0,
-              zIndex: 500 + idx
-            }).addTo(map);
-            window.radarOverlays.push(ovl);
-          });
+            frames.forEach((f, idx) => {
+              const isLatest = (idx === frames.length - 1);
+              const ovl = L.imageOverlay(f.url, bounds, {
+                opacity: isLatest ? 0.85 : 0,
+                zIndex: 500 + idx
+              }).addTo(map);
+              window.radarOverlays.push(ovl);
+            });
 
-          document.getElementById('timestamp').innerText = 'Observasi Radar Doppler BMKG: ' + frames[frames.length - 1].timeLabel;
-          setTimeout(() => { window.__RADAR_DONE__ = true; }, 1200);
+            document.getElementById('timestamp').innerText = 'Observasi Radar Doppler & Satelit BMKG: ' + frames[frames.length - 1].timeLabel;
+          } else {
+            // Doppler tidak tersedia -> Tampilkan info satelit Himawari realtime
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+            document.getElementById('timestamp').innerText = 'Observasi Satelit Himawari-9 BMKG: ' + timeStr;
+          }
+
+          setTimeout(() => { window.__RADAR_DONE__ = true; }, 1500);
         } else {
-          // Radar Satelit Potensi Curah Hujan BMKG Nasional
-          const himaUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png';
-          const bounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
-          const overlay = L.imageOverlay(himaUrl, bounds, {
-            opacity: 0.85,
-            zIndex: 500
-          }).addTo(map);
-
+          // Region Nasional, Sumatera, Jawa dll.
           const now = new Date();
           const timeStr = now.toLocaleString('id-ID', {
             timeZone: 'Asia/Jakarta',
             dateStyle: 'full',
             timeStyle: 'medium'
           });
-          document.getElementById('timestamp').innerText = 'Observasi Radar Hujan BMKG: ' + timeStr + ' WIB';
+          document.getElementById('timestamp').innerText = 'Observasi Satelit Hujan BMKG: ' + timeStr + ' WIB';
 
-          overlay.on('load', () => { setTimeout(() => { window.__RADAR_DONE__ = true; }, 800); });
-          overlay.on('error', () => { setTimeout(() => { window.__RADAR_DONE__ = true; }, 800); });
-          setTimeout(() => { window.__RADAR_DONE__ = true; }, 3500);
+          setTimeout(() => { window.__RADAR_DONE__ = true; }, 1800);
         }
       } catch (err) {
         console.error("Setup error:", err);
