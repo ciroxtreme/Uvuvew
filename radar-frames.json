@@ -1,49 +1,13 @@
 {
-  "updatedAt": "2026-10-23T21:31:56.369Z",
-  "wibTime": "24/10/2026, 04.31.51",
-  "obsTime": "19.31 WIB",
+  "updatedAt": "2026-10-30T23:31:41.961Z",
+  "wibTime": "31/10/2026, 06.31.39",
+  "obsTime": "06.21 WIB",
   "frames": [
     {
-      "id": "60",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-22/2026102211314900dBZ.cmax.0.png",
-      "path": "radar/2026-10-22/2026102211314900dBZ.cmax.0.png",
-      "timeLabel": "18.31 WIB"
-    },
-    {
-      "id": "50",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-22/2026102211414900dBZ.cmax.0.png",
-      "path": "radar/2026-10-22/2026102211414900dBZ.cmax.0.png",
-      "timeLabel": "18.41 WIB"
-    },
-    {
-      "id": "40",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-22/2026102211514900dBZ.cmax.0.png",
-      "path": "radar/2026-10-22/2026102211514900dBZ.cmax.0.png",
-      "timeLabel": "18.51 WIB"
-    },
-    {
-      "id": "30",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-22/2026102212014900dBZ.cmax.0.png",
-      "path": "radar/2026-10-22/2026102212014900dBZ.cmax.0.png",
-      "timeLabel": "19.01 WIB"
-    },
-    {
-      "id": "20",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-22/2026102212114900dBZ.cmax.0.png",
-      "path": "radar/2026-10-22/2026102212114900dBZ.cmax.0.png",
-      "timeLabel": "19.11 WIB"
-    },
-    {
-      "id": "10",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-22/2026102212214900dBZ.cmax.0.png",
-      "path": "radar/2026-10-22/2026102212214900dBZ.cmax.0.png",
-      "timeLabel": "19.21 WIB"
-    },
-    {
       "id": "00",
-      "url": "https://radar.cuacasumsel.com/radar/2026-10-22/2026102212314900dBZ.cmax.0.png",
-      "path": "radar/2026-10-22/2026102212314900dBZ.cmax.0.png",
-      "timeLabel": "19.31 WIB"
+      "url": "https://radar.cuacasumsel.com/radar/2026-10-30/2026103023211600dBZ.cmax.0.png",
+      "path": "radar/2026-10-30/2026103023211600dBZ.cmax.0.png",
+      "timeLabel": "06.21 WIB"
     }
   ]
 }
