@@ -239,7 +239,78 @@
             document.getElementById('timestamp').innerText = 'Observasi Satelit Himawari-9 BMKG: ' + timeStr;
           }
 
-          setTimeout(() => { window.__RADAR_DONE__ = true; }, 1500);
+          // Hitung deteksi sel awan hujan Doppler di sekitar Rumah Sungai Lilin
+          if (region === 'rumah' && frames.length > 0) {
+            try {
+              const latestImgUrl = frames[frames.length - 1].url;
+              const imgEl = new Image();
+              imgEl.crossOrigin = 'anonymous';
+              imgEl.onload = function() {
+                try {
+                  const cvs = document.createElement('canvas');
+                  cvs.width = imgEl.naturalWidth || 600;
+                  cvs.height = imgEl.naturalHeight || 600;
+                  const ctx = cvs.getContext('2d');
+                  ctx.drawImage(imgEl, 0, 0);
+
+                  // Koordinat Sungai Lilin pada citra CMAX SMB II: X~203, Y~245
+                  // Bounding Box radius ~40px (~25 km) di sekeliling rumah
+                  const cx = Math.round((104.12295 - (104.702556 - 1.8)) / 3.6 * cvs.width);
+                  const cy = Math.round(((-2.917444 + 1.8) - (-2.5858)) / 3.6 * cvs.height);
+                  const checkRadius = 40; // ~26 km radius
+
+                  const x0 = Math.max(0, cx - checkRadius);
+                  const y0 = Math.max(0, cy - checkRadius);
+                  const wArea = Math.min(cvs.width - x0, checkRadius * 2);
+                  const hArea = Math.min(cvs.height - y0, checkRadius * 2);
+
+                  const imgData = ctx.getImageData(x0, y0, wArea, hArea).data;
+                  let rainPixels = 0;
+                  let heavyRainPixels = 0;
+                  let minDistancePx = 999;
+
+                  for (let py = 0; py < hArea; py++) {
+                    for (let px = 0; px < wArea; px++) {
+                      const idx = (py * wArea + px) * 4;
+                      const a = imgData[idx + 3];
+                      if (a > 60) {
+                        const dist = Math.sqrt((px - (cx - x0)) ** 2 + (py - (cy - y0)) ** 2);
+                        if (dist <= checkRadius) {
+                          rainPixels++;
+                          if (dist < minDistancePx) minDistancePx = dist;
+                          const r = imgData[idx];
+                          const g = imgData[idx + 1];
+                          const b = imgData[idx + 2];
+                          // Kuning, Oranye, Merah (hujan sedang-lebat / dBZ >= 35)
+                          if (r > 200) {
+                            heavyRainPixels++;
+                          }
+                        }
+                      }
+                    }
+                  }
+
+                  const kmDist = minDistancePx < 999 ? Math.round(minDistancePx * 0.67) : null;
+                  window.__RAIN_DETECTION__ = {
+                    hasRain: rainPixels >= 6,
+                    rainPixels,
+                    heavyRainPixels,
+                    distanceKm: kmDist,
+                    isHeavy: heavyRainPixels >= 4,
+                    obsTime: frames[frames.length - 1].timeLabel
+                  };
+                  console.log("🌦️ Deteksi Hujan Sekitar Rumah:", window.__RAIN_DETECTION__);
+                } catch(e) {
+                  console.warn("Gagal deteksi canvas radar:", e);
+                }
+              };
+              imgEl.src = latestImgUrl;
+            } catch (errDet) {
+              console.warn("Gagal inisialisasi deteksi hujan:", errDet);
+            }
+          }
+
+          setTimeout(() => { window.__RADAR_DONE__ = true; }, 1800);
         } else {
           // Region Nasional, Sumatera, Jawa dll.
           const now = new Date();
