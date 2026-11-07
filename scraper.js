@@ -122,6 +122,33 @@ async function uploadAnimationToTelegramAndKV(videoPath, caption, kvKey, retries
   }
 }
 
+
+// Kirim peringatan animasi khusus ke chat pribadi Tuan Ciro jika awan hujan mendekat
+async function sendRainAlertToUser(videoPath, alertCaption) {
+  if (!USER_CHAT_ID) return;
+  try {
+    console.log();
+    const form = new FormData();
+    form.append('chat_id', USER_CHAT_ID);
+    form.append('animation', fs.createReadStream(videoPath), { filename: 'radar_alert.mp4' });
+    form.append('caption', alertCaption);
+    form.append('parse_mode', 'Markdown');
+
+    const res = await fetch(, {
+      method: 'POST',
+      body: form
+    });
+    const data = await res.json();
+    if (data.ok) {
+      console.log('✅ Alert hujan berhasil dikirim ke chat pribadi Tuan Ciro!');
+    } else {
+      console.warn('⚠️ Gagal kirim alert ke user:', data.description);
+    }
+  } catch (err) {
+    console.error('⚠️ Error saat kirim alert ke user:', err.message);
+  }
+}
+
 // Render Peta Radar BMKG Asli per Wilayah
 async function scrapeBMKGMaps(wibTime) {
   // Ambil file radar Doppler terbaru & simpan daftar frame
