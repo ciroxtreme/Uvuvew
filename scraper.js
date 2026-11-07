@@ -127,25 +127,25 @@ async function uploadAnimationToTelegramAndKV(videoPath, caption, kvKey, retries
 async function sendRainAlertToUser(videoPath, alertCaption) {
   if (!USER_CHAT_ID) return;
   try {
-    console.log();
+    console.log(`🚨 Mengirim ALERT HUJAN ke Chat Pribadi Tuan Ciro (${USER_CHAT_ID})...`);
     const form = new FormData();
-    form.append('chat_id', USER_CHAT_ID);
-    form.append('animation', fs.createReadStream(videoPath), { filename: 'radar_alert.mp4' });
-    form.append('caption', alertCaption);
-    form.append('parse_mode', 'Markdown');
+    form.append("chat_id", USER_CHAT_ID);
+    form.append("animation", fs.createReadStream(videoPath), { filename: "radar_alert.mp4" });
+    form.append("caption", alertCaption);
+    form.append("parse_mode", "Markdown");
 
-    const res = await fetch(, {
-      method: 'POST',
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
+      method: "POST",
       body: form
     });
     const data = await res.json();
     if (data.ok) {
-      console.log('✅ Alert hujan berhasil dikirim ke chat pribadi Tuan Ciro!');
+      console.log("✅ Alert hujan berhasil dikirim ke chat pribadi Tuan Ciro!");
     } else {
-      console.warn('⚠️ Gagal kirim alert ke user:', data.description);
+      console.warn("⚠️ Gagal kirim alert ke user:", data.description);
     }
   } catch (err) {
-    console.error('⚠️ Error saat kirim alert ke user:', err.message);
+    console.error("⚠️ Error saat kirim alert ke user:", err.message);
   }
 }
 
