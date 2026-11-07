@@ -19,112 +19,106 @@ if (!BOT_TOKEN || !CHANNEL_ID || !CF_ACCOUNT_ID || !CF_KV_NAMESPACE_ID || !CF_AP
 }
 
 // Upload foto statis ke Telegram & simpan file_id ke Cloudflare KV
-async function uploadToTelegramAndKV(buffer, caption, kvKey) {
-  const form = new FormData();
-  form.append('chat_id', CHANNEL_ID);
-  form.append('photo', buffer, { filename: 'radar.jpg' });
-  form.append('caption', caption);
-  form.append('parse_mode', 'Markdown');
+async function uploadToTelegramAndKV(buffer, caption, kvKey, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const form = new FormData();
+      form.append('chat_id', CHANNEL_ID);
+      form.append('photo', buffer, { filename: 'radar.jpg' });
+      form.append('caption', caption);
+      form.append('parse_mode', 'Markdown');
 
-  const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-    method: 'POST',
-    body: form
-  });
-  const tgData = await tgRes.json();
-  if (!tgData.ok) {
-    throw new Error('Gagal upload ke Telegram: ' + JSON.stringify(tgData));
+      const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: form,
+        timeout: 45000
+      });
+      const tgData = await tgRes.json();
+      if (!tgData.ok) {
+        throw new Error('Gagal upload ke Telegram: ' + JSON.stringify(tgData));
+      }
+
+      const photos = tgData.result.photo;
+      const fileId = photos[photos.length - 1].file_id;
+
+      // Simpan ke Cloudflare KV
+      const kvUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${kvKey}`;
+      await fetch(kvUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${CF_API_TOKEN}`,
+          'Content-Type': 'text/plain'
+        },
+        body: fileId
+      });
+
+      return fileId;
+    } catch (err) {
+      console.warn(`[RETRY PHOTO] Percobaan upload [${kvKey}] ke-${attempt} gagal:`, err.message);
+      if (attempt === retries) {
+        console.error(`[SKIP ERROR] Melewati upload [${kvKey}] agar proses radar lain tetap berlanjut.`);
+        return null;
+      }
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
   }
-
-  const photos = tgData.result.photo;
-  const fileId = photos[photos.length - 1].file_id;
-
-  // Simpan ke Cloudflare KV
-  const kvUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${kvKey}`;
-  await fetch(kvUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${CF_API_TOKEN}`,
-      'Content-Type': 'text/plain'
-    },
-    body: fileId
-  });
-
-  return fileId;
 }
 
 // Upload animasi video MP4 loop ke Telegram (sendAnimation) & simpan file_id ke Cloudflare KV
-async function uploadAnimationToTelegramAndKV(videoPath, caption, kvKey) {
-  const form = new FormData();
-  form.append('chat_id', CHANNEL_ID);
-  form.append('animation', fs.createReadStream(videoPath), { filename: 'radar_anim.mp4' });
-  form.append('caption', caption);
-  form.append('parse_mode', 'Markdown');
+async function uploadAnimationToTelegramAndKV(videoPath, caption, kvKey, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const form = new FormData();
+      form.append('chat_id', CHANNEL_ID);
+      form.append('animation', fs.createReadStream(videoPath), { filename: 'radar_anim.mp4' });
+      form.append('caption', caption);
+      form.append('parse_mode', 'Markdown');
 
-  const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
-    method: 'POST',
-    body: form
-  });
-  const tgData = await tgRes.json();
-  if (!tgData.ok) {
-    throw new Error('Gagal upload animasi ke Telegram: ' + JSON.stringify(tgData));
-  }
+      const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
+        method: 'POST',
+        body: form,
+        timeout: 45000
+      });
+      const tgData = await tgRes.json();
+      if (!tgData.ok) {
+        throw new Error('Gagal upload animasi ke Telegram: ' + JSON.stringify(tgData));
+      }
 
-  const anim = tgData.result.animation || tgData.result.document || tgData.result.video;
-  const fileId = anim ? anim.file_id : null;
-  if (!fileId) {
-    throw new Error('Tidak ada file_id animasi dari Telegram: ' + JSON.stringify(tgData));
-  }
+      const anim = tgData.result.animation || tgData.result.document || tgData.result.video;
+      const fileId = anim.file_id;
 
-  // Simpan ke Cloudflare KV spesifik wilayah
-  const kvUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${kvKey}`;
-  await fetch(kvUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${CF_API_TOKEN}`,
-      'Content-Type': 'text/plain'
-    },
-    body: fileId
-  });
+      // Simpan ke Cloudflare KV
+      const kvUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${kvKey}`;
+      await fetch(kvUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${CF_API_TOKEN}`,
+          'Content-Type': 'text/plain'
+        },
+        body: fileId
+      });
 
-  // Simpan juga sebagai default animasi jika wilayah rumah
-  if (kvKey === 'LATEST_RADAR_RUMAH_ANIM_FILE_ID') {
-    const defaultKvUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_ANIM_FILE_ID`;
-    await fetch(defaultKvUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${CF_API_TOKEN}`,
-        'Content-Type': 'text/plain'
-      },
-      body: fileId
-    });
-  }
+      if (kvKey === 'LATEST_RADAR_RUMAH_ANIM_FILE_ID') {
+        const defaultKvUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_ANIM_FILE_ID`;
+        await fetch(defaultKvUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${CF_API_TOKEN}`,
+            'Content-Type': 'text/plain'
+          },
+          body: fileId
+        });
+      }
 
-  return fileId;
-}
-
-// Kirim peringatan animasi khusus ke chat pribadi Tuan Ciro jika awan hujan mendekat
-async function sendRainAlertToUser(videoPath, alertCaption) {
-  if (!USER_CHAT_ID) return;
-  try {
-    console.log(`🚨 Mengirim ALERT HUJAN ke Chat Pribadi Tuan Ciro (${USER_CHAT_ID})...`);
-    const form = new FormData();
-    form.append('chat_id', USER_CHAT_ID);
-    form.append('animation', fs.createReadStream(videoPath), { filename: 'radar_alert.mp4' });
-    form.append('caption', alertCaption);
-    form.append('parse_mode', 'Markdown');
-
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
-      method: 'POST',
-      body: form
-    });
-    const data = await res.json();
-    if (data.ok) {
-      console.log('✅ Alert hujan berhasil dikirim ke chat pribadi Tuan Ciro!');
-    } else {
-      console.warn('⚠️ Gagal kirim alert ke user:', data.description);
+      return fileId;
+    } catch (err) {
+      console.warn(`[RETRY ANIM] Percobaan upload animasi [${kvKey}] ke-${attempt} gagal:`, err.message);
+      if (attempt === retries) {
+        console.error(`[SKIP ERROR] Melewati upload animasi [${kvKey}] agar proses radar lain tetap berlanjut.`);
+        return null;
+      }
+      await new Promise(r => setTimeout(r, 2000 * attempt));
     }
-  } catch (err) {
-    console.error('⚠️ Error saat kirim alert ke user:', err.message);
   }
 }
 
