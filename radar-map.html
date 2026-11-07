@@ -179,7 +179,7 @@
         // Lapisan Citra Satelit Potensi Curah Hujan Himawari-9 (selalu dinamis & up to date)
         const himaUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png?_t=' + Date.now();
         const himaBounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
-        L.imageOverlay(himaUrl, himaBounds, {
+        const himaLayer = L.imageOverlay(himaUrl, himaBounds, {
           opacity: isLocalDoppler ? 0.50 : 0.85,
           zIndex: 350
         }).addTo(map);
@@ -197,13 +197,16 @@
                 const path = m[2];
                 const matchTime = path.match(/([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/);
                 let timeLabel = "";
+                let frameTimestamp = 0;
                 if (matchTime) {
                   const d = new Date(Date.UTC(parseInt(matchTime[1]), parseInt(matchTime[2]) - 1, parseInt(matchTime[3]), parseInt(matchTime[4]), parseInt(matchTime[5])));
+                  frameTimestamp = d.getTime();
                   timeLabel = d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
                 }
                 return {
                   url: 'https://radar.cuacasumsel.com/' + path,
-                  timeLabel
+                  timeLabel,
+                  timestamp: frameTimestamp
                 };
               }).reverse();
             }
@@ -211,14 +214,20 @@
             console.warn("Gagal fetch daftar frame radar:", e);
           }
 
-          if (frames.length === 0 && urlParams.get('radarImg')) {
-            frames = [{
-              url: urlParams.get('radarImg'),
-              timeLabel: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB'
-            }];
+          const now = new Date();
+          const nowTimeStr = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+          // Cek apakah Doppler radar BMKG lokal macet / usang (> 2 jam yang lalu)
+          let isDopplerStale = false;
+          if (frames.length > 0) {
+            const latestFrameTime = frames[frames.length - 1].timestamp;
+            if (latestFrameTime && (Date.now() - latestFrameTime > 2 * 3600 * 1000)) {
+              isDopplerStale = true;
+              console.warn("⚠️ Doppler BMKG Sumsel usang (> 2 jam). Auto-fallback ke Satelit Himawari-9 Live!");
+            }
           }
 
-          if (frames.length > 0) {
+          if (frames.length > 0 && !isDopplerStale) {
             window.radarFrameTimes = frames.map(f => f.timeLabel);
             window.radarOverlays = [];
 
@@ -233,10 +242,10 @@
 
             document.getElementById('timestamp').innerText = 'Observasi Radar Doppler & Satelit BMKG: ' + frames[frames.length - 1].timeLabel;
           } else {
-            // Doppler tidak tersedia -> Tampilkan info satelit Himawari realtime
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-            document.getElementById('timestamp').innerText = 'Observasi Satelit Himawari-9 BMKG: ' + timeStr;
+            // Doppler tidak tersedia atau sedang macet -> Tampilkan Satelit Himawari-9 Real-Time
+            himaLayer.setOpacity(0.88);
+            document.getElementById('timestamp').innerText = 'Observasi Satelit Himawari-9 Live: ' + nowTimeStr;
+            frames = []; // Nonaktifkan deteksi radar usang agar tidak salah kirim alert
           }
 
           // Hitung deteksi sel awan hujan Doppler di sekitar Rumah Sungai Lilin
