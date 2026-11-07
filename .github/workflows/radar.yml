@@ -3,7 +3,7 @@ name: Scrape Radar Cuaca BMKG
 on:
   schedule:
     # Menit off-peak (bukan tepat 00/15/30/45) untuk menghindari antrean server GitHub Actions
-    - cron: '7,22,37,52 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:        # Bisa dijalankan manual lewat tombol 'Run workflow' di GitHub Actions
   repository_dispatch:      # Bisa dipanggil dari Cloudflare Worker / Webhook
     types: [scrape_radar]
