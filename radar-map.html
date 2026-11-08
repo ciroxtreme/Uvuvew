@@ -248,74 +248,143 @@
             frames = []; // Nonaktifkan deteksi radar usang agar tidak salah kirim alert
           }
 
-          // Hitung deteksi sel awan hujan Doppler di sekitar Rumah Sungai Lilin
-          if (region === 'rumah' && frames.length > 0) {
-            try {
-              const latestImgUrl = frames[frames.length - 1].url;
-              const imgEl = new Image();
-              imgEl.crossOrigin = 'anonymous';
-              imgEl.onload = function() {
-                try {
-                  const cvs = document.createElement('canvas');
-                  cvs.width = imgEl.naturalWidth || 600;
-                  cvs.height = imgEl.naturalHeight || 600;
-                  const ctx = cvs.getContext('2d');
-                  ctx.drawImage(imgEl, 0, 0);
+          // Hitung deteksi sel awan hujan di sekitar Rumah Sungai Lilin (Doppler BMKG atau Fallback Satelit Himawari-9 BMKG)
+          if (region === 'rumah') {
+            if (frames.length > 0 && !isDopplerStale) {
+              // MODE 1: Doppler Radar BMKG Lokal Aktif
+              try {
+                const latestImgUrl = frames[frames.length - 1].url;
+                const imgEl = new Image();
+                imgEl.crossOrigin = 'anonymous';
+                imgEl.onload = function() {
+                  try {
+                    const cvs = document.createElement('canvas');
+                    cvs.width = imgEl.naturalWidth || 600;
+                    cvs.height = imgEl.naturalHeight || 600;
+                    const ctx = cvs.getContext('2d');
+                    ctx.drawImage(imgEl, 0, 0);
 
-                  // Koordinat Sungai Lilin pada citra CMAX SMB II: X~203, Y~245
-                  // Bounding Box radius ~40px (~25 km) di sekeliling rumah
-                  const cx = Math.round((104.12295 - (104.702556 - 1.8)) / 3.6 * cvs.width);
-                  const cy = Math.round(((-2.917444 + 1.8) - (-2.5858)) / 3.6 * cvs.height);
-                  const checkRadius = 40; // ~26 km radius
+                    // Koordinat Sungai Lilin pada citra CMAX SMB II: X~203, Y~245
+                    const cx = Math.round((104.12295 - (104.702556 - 1.8)) / 3.6 * cvs.width);
+                    const cy = Math.round(((-2.917444 + 1.8) - (-2.5858)) / 3.6 * cvs.height);
+                    const checkRadius = 40; // ~26 km radius
 
-                  const x0 = Math.max(0, cx - checkRadius);
-                  const y0 = Math.max(0, cy - checkRadius);
-                  const wArea = Math.min(cvs.width - x0, checkRadius * 2);
-                  const hArea = Math.min(cvs.height - y0, checkRadius * 2);
+                    const x0 = Math.max(0, cx - checkRadius);
+                    const y0 = Math.max(0, cy - checkRadius);
+                    const wArea = Math.min(cvs.width - x0, checkRadius * 2);
+                    const hArea = Math.min(cvs.height - y0, checkRadius * 2);
 
-                  const imgData = ctx.getImageData(x0, y0, wArea, hArea).data;
-                  let rainPixels = 0;
-                  let heavyRainPixels = 0;
-                  let minDistancePx = 999;
+                    const imgData = ctx.getImageData(x0, y0, wArea, hArea).data;
+                    let rainPixels = 0;
+                    let heavyRainPixels = 0;
+                    let minDistancePx = 999;
 
-                  for (let py = 0; py < hArea; py++) {
-                    for (let px = 0; px < wArea; px++) {
-                      const idx = (py * wArea + px) * 4;
-                      const a = imgData[idx + 3];
-                      if (a > 60) {
-                        const dist = Math.sqrt((px - (cx - x0)) ** 2 + (py - (cy - y0)) ** 2);
-                        if (dist <= checkRadius) {
-                          rainPixels++;
-                          if (dist < minDistancePx) minDistancePx = dist;
-                          const r = imgData[idx];
-                          const g = imgData[idx + 1];
-                          const b = imgData[idx + 2];
-                          // Kuning, Oranye, Merah (hujan sedang-lebat / dBZ >= 35)
-                          if (r > 200) {
-                            heavyRainPixels++;
+                    for (let py = 0; py < hArea; py++) {
+                      for (let px = 0; px < wArea; px++) {
+                        const idx = (py * wArea + px) * 4;
+                        const a = imgData[idx + 3];
+                        if (a > 60) {
+                          const dist = Math.sqrt((px - (cx - x0)) ** 2 + (py - (cy - y0)) ** 2);
+                          if (dist <= checkRadius) {
+                            rainPixels++;
+                            if (dist < minDistancePx) minDistancePx = dist;
+                            const r = imgData[idx];
+                            // Kuning, Oranye, Merah (hujan sedang-lebat / dBZ >= 35)
+                            if (r > 200) {
+                              heavyRainPixels++;
+                            }
                           }
                         }
                       }
                     }
-                  }
 
-                  const kmDist = minDistancePx < 999 ? Math.round(minDistancePx * 0.67) : null;
-                  window.__RAIN_DETECTION__ = {
-                    hasRain: rainPixels >= 6,
-                    rainPixels,
-                    heavyRainPixels,
-                    distanceKm: kmDist,
-                    isHeavy: heavyRainPixels >= 4,
-                    obsTime: frames[frames.length - 1].timeLabel
-                  };
-                  console.log("🌦️ Deteksi Hujan Sekitar Rumah:", window.__RAIN_DETECTION__);
-                } catch(e) {
-                  console.warn("Gagal deteksi canvas radar:", e);
-                }
-              };
-              imgEl.src = latestImgUrl;
-            } catch (errDet) {
-              console.warn("Gagal inisialisasi deteksi hujan:", errDet);
+                    const kmDist = minDistancePx < 999 ? Math.round(minDistancePx * 0.67) : null;
+                    window.__RAIN_DETECTION__ = {
+                      sensor: "radar_doppler",
+                      hasRain: rainPixels >= 6,
+                      rainPixels,
+                      heavyRainPixels,
+                      distanceKm: kmDist,
+                      isHeavy: heavyRainPixels >= 4,
+                      obsTime: frames[frames.length - 1].timeLabel
+                    };
+                    console.log("🌦️ Deteksi Hujan Doppler Sekitar Rumah:", window.__RAIN_DETECTION__);
+                  } catch(e) {
+                    console.warn("Gagal deteksi canvas radar doppler:", e);
+                  }
+                };
+                imgEl.src = latestImgUrl;
+              } catch (errDet) {
+                console.warn("Gagal inisialisasi deteksi hujan doppler:", errDet);
+              }
+            } else {
+              // MODE 2: FALLBACK SATELIT HIMAWARI-9 POTENSI HUJAN BMKG (Selalu Live 24/7)
+              try {
+                const satImg = new Image();
+                satImg.crossOrigin = 'anonymous';
+                satImg.onload = function() {
+                  try {
+                    const cvs = document.createElement('canvas');
+                    cvs.width = satImg.naturalWidth || 1200;
+                    cvs.height = satImg.naturalHeight || 800;
+                    const ctx = cvs.getContext('2d');
+                    ctx.drawImage(satImg, 0, 0);
+
+                    // Bounds Himawari Indonesia: Lat [20 to -20], Lon [90 to 150]
+                    // Koordinat Rumah Sungai Lilin: Lat -2.5858, Lon 104.12295
+                    const cx = Math.round((104.12295 - 90.0) / (150.0 - 90.0) * cvs.width);
+                    const cy = Math.round((20.0 - (-2.5858)) / (20.0 - (-20.0)) * cvs.height);
+                    const satRadius = 25; // radius pantauan sekitar rumah
+
+                    const x0 = Math.max(0, cx - satRadius);
+                    const y0 = Math.max(0, cy - satRadius);
+                    const wArea = Math.min(cvs.width - x0, satRadius * 2);
+                    const hArea = Math.min(cvs.height - y0, satRadius * 2);
+
+                    const imgData = ctx.getImageData(x0, y0, wArea, hArea).data;
+                    let satRainPixels = 0;
+                    let satHeavyPixels = 0;
+
+                    for (let py = 0; py < hArea; py++) {
+                      for (let px = 0; px < wArea; px++) {
+                        const idx = (py * wArea + px) * 4;
+                        const r = imgData[idx];
+                        const g = imgData[idx + 1];
+                        const b = imgData[idx + 2];
+                        const a = imgData[idx + 3];
+
+                        if (a > 50) {
+                          // Deteksi spektrum awan hujan Himawari Potensi Hujan (Kuning, Oranye, Merah, Ungu)
+                          const isRedOrange = (r > 180 && b < 100);
+                          const isYellow = (r > 180 && g > 180 && b < 120);
+                          const isCyanGreen = (g > 150 && b > 120);
+
+                          if (isRedOrange || isYellow || isCyanGreen) {
+                            satRainPixels++;
+                            if (isRedOrange) satHeavyPixels++;
+                          }
+                        }
+                      }
+                    }
+
+                    window.__RAIN_DETECTION__ = {
+                      sensor: "satelit_himawari",
+                      hasRain: satRainPixels >= 8,
+                      rainPixels: satRainPixels,
+                      heavyRainPixels: satHeavyPixels,
+                      distanceKm: 0,
+                      isHeavy: satHeavyPixels >= 3,
+                      obsTime: nowTimeStr
+                    };
+                    console.log("🛰️ Deteksi Hujan Satelit Himawari-9 Sekitar Rumah:", window.__RAIN_DETECTION__);
+                  } catch(e) {
+                    console.warn("Gagal deteksi canvas satelit himawari:", e);
+                  }
+                };
+                satImg.src = himaUrl;
+              } catch (errSat) {
+                console.warn("Gagal inisialisasi satelit himawari:", errSat);
+              }
             }
           }
 
