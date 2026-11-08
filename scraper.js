@@ -315,10 +315,11 @@ async function scrapeBMKGMaps(wibTime) {
 
                   if (shouldAlert) {
                     const intensitas = rainStatus.isHeavy ? "LEBAT / BADAI ⛈️" : "SEDANG - HUJAN 🌧️";
-                    const jarakInfo = rainStatus.distanceKm !== null ? `sekitar *~${rainStatus.distanceKm} km* dari rumah` : "sangat dekat dengan rumah";
+                    const sensorLabel = rainStatus.sensor === "satelit_himawari" ? "🛰️ Citra Satelit Himawari-9 BMKG" : "📡 Radar Doppler BMKG";
+                    const jarakInfo = (rainStatus.distanceKm && rainStatus.distanceKm > 0) ? `berjarak sekitar *~${rainStatus.distanceKm} km* dari rumah` : "berada tepat di atas wilayah rumah";
                     const alertMsg = 
-                      `⚠️ *PERINGATAN HUJAN DETEKSI RADAR!*\n\n` +
-                      `Tuan Ciro, radar Doppler mendeteksi sel awan hujan intensitas *${intensitas}* berjarak ${jarakInfo}!\n\n` +
+                      `⚠️ *PERINGATAN HUJAN BMKG!*\n\n` +
+                      `Tuan Ciro, ${sensorLabel} mendeteksi potensi hujan intensitas *${intensitas}* ${jarakInfo}!\n\n` +
                       `🕒 *Observasi:* ${rainStatus.obsTime || wibTime} WIB\n` +
                       `📍 *Lokasi Pantau:* Sekitar Rumah (Sungai Lilin)\n\n` +
                       `👉 *Jemuran atau aktivitas luar segera diamankan ya Tuan Ciro!* 🏃‍♂️👕🌧️`;
