@@ -124,17 +124,24 @@ async function uploadAnimationToTelegramAndKV(videoPath, caption, kvKey, retries
 
 
 // Kirim peringatan animasi khusus ke chat pribadi Tuan Ciro jika awan hujan mendekat
-async function sendRainAlertToUser(videoPath, alertCaption) {
+async function sendRainAlertToUser(mediaTarget, alertCaption, isPhoto = false) {
   if (!USER_CHAT_ID) return;
   try {
     console.log(`🚨 Mengirim ALERT HUJAN ke Chat Pribadi Tuan Ciro (${USER_CHAT_ID})...`);
     const form = new FormData();
     form.append("chat_id", USER_CHAT_ID);
-    form.append("animation", fs.createReadStream(videoPath), { filename: "radar_alert.mp4" });
     form.append("caption", alertCaption);
     form.append("parse_mode", "Markdown");
 
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
+    let endpoint = "sendAnimation";
+    if (isPhoto || Buffer.isBuffer(mediaTarget)) {
+      endpoint = "sendPhoto";
+      form.append("photo", mediaTarget, { filename: "radar_alert.jpg" });
+    } else {
+      form.append("animation", fs.createReadStream(mediaTarget), { filename: "radar_alert.mp4" });
+    }
+
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
       method: "POST",
       body: form
     });
