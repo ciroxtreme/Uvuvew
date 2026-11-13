@@ -257,6 +257,9 @@ async function scrapeBMKGMaps(wibTime) {
       );
       console.log(`✅ Foto statis [${reg.name}] tersimpan ke KV (${reg.kvKey})!`);
 
+      let generatedVideoPath = null;
+      let frameDirToClean = null;
+
       // 2. Render animasi pergerakan awan/radar jika tersedia multi-frame
       if (reg.animKvKey) {
         try {
@@ -264,6 +267,7 @@ async function scrapeBMKGMaps(wibTime) {
           console.log(`🎬 Menyiapkan animasi [${reg.name}] (${frameCount} frame)...`);
           if (frameCount > 1) {
             const frameDir = path.join(os.tmpdir(), `frames_${reg.key}_${Date.now()}`);
+            frameDirToClean = frameDir;
             fs.mkdirSync(frameDir, { recursive: true });
 
             let frameNum = 0;
@@ -286,6 +290,7 @@ async function scrapeBMKGMaps(wibTime) {
             await page.evaluate((idx) => window.setRadarFrame(idx), frameCount - 1);
 
             const videoPath = path.join(os.tmpdir(), `radar_anim_${reg.key}_${Date.now()}.mp4`);
+            generatedVideoPath = videoPath;
             // Encode ke MP4 (H.264, 2 fps, lanczos 800px width)
             execSync(`ffmpeg -y -framerate 2 -i "${frameDir}/frame_%03d.jpg" -vf "scale=800:-2:flags=lanczos,format=yuv420p" -c:v libx264 -preset fast -crf 23 "${videoPath}"`, { stdio: 'pipe' });
 
@@ -295,75 +300,81 @@ async function scrapeBMKGMaps(wibTime) {
               reg.animKvKey
             );
             console.log(`✅ Animasi [${reg.name}] tersimpan ke KV (${reg.animKvKey})!`);
-
-            // 3. Khusus wilayah RUMAH (Sungai Lilin): Periksa apakah ada awan hujan mendekat
-            if (reg.key === 'rumah') {
-              try {
-                const rainStatus = await page.evaluate(() => window.__RAIN_DETECTION__ || null);
-                console.log("🔍 Status Deteksi Awan Hujan Rumah:", JSON.stringify(rainStatus));
-                if (rainStatus && rainStatus.hasRain) {
-                  // Cek apakah baru saja mengirim notifikasi dalam 45 menit terakhir agar tidak spam
-                  let shouldAlert = true;
-                  const alertCooldownKey = 'LAST_RAIN_ALERT_TIMESTAMP_MS';
-                  try {
-                    const checkAlertUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${alertCooldownKey}`;
-                    const resAlert = await fetch(checkAlertUrl, {
-                      headers: { 'Authorization': `Bearer ${CF_API_TOKEN}` }
-                    });
-                    if (resAlert.ok) {
-                      const lastAlertMs = parseInt(await resAlert.text(), 10) || 0;
-                      // Jeda minimal 45 menit antar alert
-                      if (Date.now() - lastAlertMs < 45 * 60 * 1000) {
-                        shouldAlert = false;
-                        console.log("⏳ Melewati kirim alert (cooldown 45 menit masih aktif)");
-                      }
-                    }
-                  } catch (e) {}
-
-                  if (shouldAlert) {
-                    const intensitas = rainStatus.isHeavy ? "LEBAT / BADAI ⛈️" : "SEDANG - HUJAN 🌧️";
-                    const sensorLabel = rainStatus.sensor === "satelit_himawari" ? "🛰️ Citra Satelit Himawari-9 BMKG" : "📡 Radar Doppler BMKG";
-                    const jarakInfo = (rainStatus.distanceKm && rainStatus.distanceKm > 0) ? `berjarak sekitar *~${rainStatus.distanceKm} km* dari rumah` : "berada tepat di atas wilayah rumah";
-                    const alertMsg = 
-                      `⚠️ *PERINGATAN HUJAN BMKG!*\n\n` +
-                      `Tuan Ciro, ${sensorLabel} mendeteksi potensi hujan intensitas *${intensitas}* ${jarakInfo}!\n\n` +
-                      `🕒 *Observasi:* ${rainStatus.obsTime || wibTime} WIB\n` +
-                      `📍 *Lokasi Pantau:* Sekitar Rumah (Sungai Lilin)\n\n` +
-                      `👉 *Jemuran atau aktivitas luar segera diamankan ya Tuan Ciro!* 🏃‍♂️👕🌧️`;
-
-                    await sendRainAlertToUser(videoPath, alertMsg);
-
-                    // Catat timestamp alert ke KV
-                    try {
-                      const putAlertUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${alertCooldownKey}`;
-                      await fetch(putAlertUrl, {
-                        method: 'PUT',
-                        headers: {
-                          'Authorization': `Bearer ${CF_API_TOKEN}`,
-                          'Content-Type': 'text/plain'
-                        },
-                        body: String(Date.now())
-                      });
-                    } catch (e) {}
-                  }
-                } else {
-                  console.log("☀️ Area rumah terpantau aman / cerah berawan (tidak ada sel awan hujan signifikan).");
-                }
-              } catch (detErr) {
-                console.error("⚠️ Gagal evaluasi deteksi awan rumah:", detErr.message);
-              }
-            }
-
-            // Bersihkan file sementara
-            try {
-              fs.rmSync(frameDir, { recursive: true, force: true });
-              fs.unlinkSync(videoPath);
-            } catch (e) {}
           }
         } catch (animErr) {
           console.error(`⚠️ Gagal generate animasi [${reg.name}]:`, animErr.message);
         }
       }
+
+      // 3. Khusus wilayah RUMAH (Sungai Lilin): Periksa apakah ada awan hujan mendekat
+      // Dijalankan SELALU (mandiri) baik saat multi-frame radar Doppler maupun single-frame Satelit Himawari-9
+      if (reg.key === 'rumah') {
+        try {
+          const rainStatus = await page.evaluate(() => window.__RAIN_DETECTION__ || null);
+          console.log("🔍 Status Deteksi Awan Hujan Rumah:", JSON.stringify(rainStatus));
+          if (rainStatus && rainStatus.hasRain) {
+            // Cek apakah baru saja mengirim notifikasi dalam 45 menit terakhir agar tidak spam
+            let shouldAlert = true;
+            const alertCooldownKey = 'LAST_RAIN_ALERT_TIMESTAMP_MS';
+            try {
+              const checkAlertUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${alertCooldownKey}`;
+              const resAlert = await fetch(checkAlertUrl, {
+                headers: { 'Authorization': `Bearer ${CF_API_TOKEN}` }
+              });
+              if (resAlert.ok) {
+                const lastAlertMs = parseInt(await resAlert.text(), 10) || 0;
+                // Jeda minimal 45 menit antar alert
+                if (Date.now() - lastAlertMs < 45 * 60 * 1000) {
+                  shouldAlert = false;
+                  console.log("⏳ Melewati kirim alert (cooldown 45 menit masih aktif)");
+                }
+              }
+            } catch (e) {}
+
+            if (shouldAlert) {
+              const intensitas = rainStatus.isHeavy ? "LEBAT / BADAI ⛈️" : "SEDANG - HUJAN 🌧️";
+              const sensorLabel = rainStatus.sensor === "satelit_himawari" ? "🛰️ Citra Satelit Himawari-9 BMKG" : "📡 Radar Doppler BMKG";
+              const jarakInfo = (rainStatus.distanceKm && rainStatus.distanceKm > 0) ? `berjarak sekitar *~${rainStatus.distanceKm} km* dari rumah` : "berada tepat di atas wilayah rumah";
+              const alertMsg = 
+                `⚠️ *PERINGATAN HUJAN BMKG!*\n\n` +
+                `Tuan Ciro, ${sensorLabel} mendeteksi potensi hujan intensitas *${intensitas}* ${jarakInfo}!\n\n` +
+                `🕒 *Observasi:* ${rainStatus.obsTime || wibTime} WIB\n` +
+                `📍 *Lokasi Pantau:* Sekitar Rumah (Sungai Lilin)\n\n` +
+                `👉 *Jemuran atau aktivitas luar segera diamankan ya Tuan Ciro!* 🏃‍♂️👕🌧️`;
+
+              // Jika ada video animasi kirim animasi, jika mode satelit himawari kirim foto tangkapan radar rumah
+              if (generatedVideoPath && fs.existsSync(generatedVideoPath)) {
+                await sendRainAlertToUser(generatedVideoPath, alertMsg, false);
+              } else {
+                await sendRainAlertToUser(buffer, alertMsg, true);
+              }
+
+              // Catat timestamp alert ke KV
+              try {
+                const putAlertUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/${alertCooldownKey}`;
+                await fetch(putAlertUrl, {
+                  method: 'PUT',
+                  headers: {
+                    'Authorization': `Bearer ${CF_API_TOKEN}`,
+                    'Content-Type': 'text/plain'
+                  },
+                  body: String(Date.now())
+                });
+              } catch (e) {}
+            }
+          } else {
+            console.log("☀️ Area rumah terpantau aman / cerah berawan (tidak ada sel awan hujan signifikan).");
+          }
+        } catch (detErr) {
+          console.error("⚠️ Gagal evaluasi deteksi awan rumah:", detErr.message);
+        }
+      }
+
+      // Bersihkan file sementara animasi jika ada
+      try {
+        if (frameDirToClean) fs.rmSync(frameDirToClean, { recursive: true, force: true });
+        if (generatedVideoPath && fs.existsSync(generatedVideoPath)) fs.unlinkSync(generatedVideoPath);
+      } catch (e) {}
     }
   } finally {
     try { await browser.close(); } catch (e) {}
