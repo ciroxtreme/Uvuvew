@@ -10,10 +10,15 @@ def render_mosaik():
     with open(frames_path) as f:
         data = json.load(f)
 
-    if not data.get("frames"):
+    if isinstance(data, list):
+        frames = data
+    else:
+        frames = data.get("frames", [])
+
+    if not frames:
         return
 
-    latest = data["frames"][-1]
+    latest = frames[0] if frames else None
     ts = latest.get("timestamp")
     radar_file = os.path.join(os.path.dirname(__file__), f"radar_sumsel_{ts}.png")
     if not os.path.exists(radar_file):

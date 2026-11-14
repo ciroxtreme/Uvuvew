@@ -10,7 +10,10 @@ def stitch_radar_frames():
     with open(frames_json_path) as f:
         data = json.load(f)
 
-    frames = data.get("frames", [])
+    if isinstance(data, list):
+        frames = data
+    else:
+        frames = data.get("frames", [])
     if not frames:
         print("Tidak ada frames di radar-frames.json")
         return
@@ -60,9 +63,14 @@ def stitch_radar_frames():
             if os.path.exists(out_png):
                 valid_frames.append(f_info)
 
-    data["frames"] = valid_frames
+    if isinstance(data, list):
+        out_data = valid_frames
+    else:
+        data["frames"] = valid_frames
+        out_data = data
+
     with open(frames_json_path, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(out_data, f, indent=2)
 
     print(f"🎉 Berhasil menjahit {stitched_count} frame radar mosaik BMKG!")
 
