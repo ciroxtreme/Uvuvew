@@ -176,17 +176,8 @@
       try {
         const isLocalDoppler = (region === 'rumah' || region === 'palembang' || region === 'sumsel');
 
-        // Lapisan Citra Satelit Potensi Curah Hujan Himawari-9 (selalu dinamis & up to date)
-        const himaUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png?_t=' + Date.now();
-        const himaBounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
-        const himaLayer = L.imageOverlay(himaUrl, himaBounds, {
-          opacity: isLocalDoppler ? 0.50 : 0.85,
-          zIndex: 350
-        }).addTo(map);
-
-        if (isLocalDoppler) {
-          // Bounds Radar Sumsel & Sekitarnya (BMKG Mosaic CMAX BBOX: 102.5, -4.5, 106.0, -1.5)
-          const bounds = [[-4.5, 102.5], [-1.5, 106.0]];
+        // Bounds Mosaik WMS Sumatera Resmi BMKG (Full Grid 16 Tiles)
+        const bounds = [[-11.1784, 90.0], [11.1784, 112.5]];
           
           let frames = [];
           // 1. Coba ambil frame live BMKG resmi dari Cloudflare Worker / GitHub
@@ -263,7 +254,7 @@
             document.getElementById('timestamp').innerText = 'Observasi Radar Doppler & Satelit BMKG: ' + frames[frames.length - 1].timeLabel;
           } else {
             // Doppler tidak tersedia atau sedang macet -> Tampilkan Satelit Himawari-9 Real-Time
-            himaLayer.setOpacity(0.88);
+            // himaLayer nonaktif karena mosaik radar aktif
             document.getElementById('timestamp').innerText = 'Observasi Satelit Himawari-9 Live: ' + nowTimeStr;
             frames = []; // Nonaktifkan deteksi radar usang agar tidak salah kirim alert
           }

@@ -196,7 +196,8 @@ async function scrapeBMKGMaps(wibTime) {
 
   try {
     for (const reg of regions) {
-      const htmlFile = (reg.key === 'sumatera' || reg.key === 'mosaik') ? 'radar-mosaik-sumatera.html' : 'radar-map.html';
+      // Gunakan engine radar-mosaik-sumatera.html untuk SEMUA wilayah (Rumah, Palembang, Sumatera)
+      const htmlFile = 'radar-mosaik-sumatera.html';
       let localHtmlPath = `file://${path.resolve(__dirname, htmlFile)}?region=${reg.key}`;
       if (latestRadarSumsel && (reg.key === 'rumah' || reg.key === 'palembang')) {
         localHtmlPath += `&radarImg=${encodeURIComponent(latestRadarSumsel)}`;
