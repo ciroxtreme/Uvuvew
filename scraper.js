@@ -236,7 +236,8 @@ async function scrapeBMKGMaps(wibTime) {
 
   try {
     for (const reg of regions) {
-      let localHtmlPath = `file://${path.resolve(__dirname, 'radar-map.html')}?region=${reg.key}`;
+      const htmlFile = (reg.key === 'sumatera' || reg.key === 'mosaik') ? 'radar-mosaik-sumatera.html' : 'radar-map.html';
+      let localHtmlPath = `file://${path.resolve(__dirname, htmlFile)}?region=${reg.key}`;
       if (latestRadarSumsel && (reg.key === 'rumah' || reg.key === 'palembang')) {
         localHtmlPath += `&radarImg=${encodeURIComponent(latestRadarSumsel)}`;
       }

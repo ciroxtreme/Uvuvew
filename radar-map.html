@@ -123,10 +123,10 @@
       center = [-7.15, 109.8];
       zoom = 7;
       title = "📡 RADAR BMKG: JAWA, BALI & SEKITARNYA";
-    } else if (region === 'sumatera' || region === 'mosaik') {
+    } else if (region === 'sumatera') {
       center = [-0.5, 101.5];
       zoom = 6;
-      title = "📡 RADAR DOPPLER BMKG: SUMATERA (MOSAIK)";
+      title = "📡 RADAR BMKG: SUMATERA";
     } else if (region === 'kalimantan') {
       center = [-0.2, 113.8];
       zoom = 6;
@@ -154,10 +154,10 @@
       L.marker([-2.5858, 104.12295], { icon: houseIcon, zIndexOffset: 1000 }).addTo(map);
     }
 
-    // Peta dasar OpenStreetMap Standar Publik (Gratis, Tanpa Token, Cepat & Lengkap)
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Peta dasar Esri World Street Map (peta jalan & nama kota yang sangat jelas)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 18,
-      attribution: '&copy; OpenStreetMap contributors'
+      attribution: 'Esri'
     }).addTo(map);
 
     window.radarOverlays = [];
@@ -174,28 +174,19 @@
 
     async function loadRealtimeRadar() {
       try {
-        const isLocalDoppler = (region === 'rumah' || region === 'palembang' || region === 'sumsel' || region === 'mosaik' || region === 'sumatera');
+        const isLocalDoppler = (region === 'rumah' || region === 'palembang' || region === 'sumsel');
 
-        // Lapisan Satelit HANYA aktif jika BUKAN mode mosaik Sumatera murni
-        const isMosaikSumatera = (region === 'sumatera' || region === 'mosaik');
+        // Lapisan Citra Satelit Potensi Curah Hujan Himawari-9 (selalu dinamis & up to date)
         const himaUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png?_t=' + Date.now();
         const himaBounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
-        let himaLayer = null;
-        if (!isMosaikSumatera) {
-          himaLayer = L.imageOverlay(himaUrl, himaBounds, {
-            opacity: isLocalDoppler ? 0.40 : 0.85,
-            zIndex: 350
-          }).addTo(map);
-        }
+        const himaLayer = L.imageOverlay(himaUrl, himaBounds, {
+          opacity: isLocalDoppler ? 0.50 : 0.85,
+          zIndex: 350
+        }).addTo(map);
 
         if (isLocalDoppler) {
-          // Sesuaikan Bounding Box Overlay jika Region Sumatera / Mosaik
-          let bounds = [[-4.5, 102.5], [-1.5, 106.0]];
-          if (region === 'sumatera' || region === 'mosaik') {
-            bounds = [[-6.2, 94.5], [6.2, 107.0]];
-          }
           // Bounds Radar Sumsel & Sekitarnya (BMKG Mosaic CMAX BBOX: 102.5, -4.5, 106.0, -1.5)
-          // bounds dinamis
+          const bounds = [[-4.5, 102.5], [-1.5, 106.0]];
           
           let frames = [];
           // 1. Coba ambil frame live BMKG resmi dari Cloudflare Worker / GitHub
@@ -248,8 +239,7 @@
 
           // Cek apakah Doppler radar BMKG lokal macet / usang (> 2 jam yang lalu)
           let isDopplerStale = false;
-          // Khusus mode Mosaik Sumatera, JANGAN PERNAH fallback ke Himawari! Selalu tampilkan radar Doppler murni!
-          if (!isMosaikSumatera && frames.length > 0) {
+          if (frames.length > 0) {
             const latestFrameTime = frames[frames.length - 1].timestamp;
             if (latestFrameTime && (Date.now() - latestFrameTime > 2 * 3600 * 1000)) {
               isDopplerStale = true;
@@ -272,8 +262,8 @@
 
             document.getElementById('timestamp').innerText = 'Observasi Radar Doppler & Satelit BMKG: ' + frames[frames.length - 1].timeLabel;
           } else {
-            // Doppler tidak tersedia atau sedang macet -> Tampilkan Satelit Himawari-9 Real-Time jika bukan mosaik
-            if (himaLayer) himaLayer.setOpacity(0.88);
+            // Doppler tidak tersedia atau sedang macet -> Tampilkan Satelit Himawari-9 Real-Time
+            himaLayer.setOpacity(0.88);
             document.getElementById('timestamp').innerText = 'Observasi Satelit Himawari-9 Live: ' + nowTimeStr;
             frames = []; // Nonaktifkan deteksi radar usang agar tidak salah kirim alert
           }
