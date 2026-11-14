@@ -2,16 +2,16 @@ name: Scrape Radar Cuaca BMKG
 
 on:
   schedule:
-    # Menit off-peak (bukan tepat 00/15/30/45) untuk menghindari antrean server GitHub Actions
+    # Menit off-peak untuk menghindari antrean server GitHub Actions
     - cron: '*/10 * * * *'
   workflow_dispatch:        # Bisa dijalankan manual lewat tombol 'Run workflow' di GitHub Actions
   repository_dispatch:      # Bisa dipanggil dari Cloudflare Worker / Webhook
-    types: [scrape_radar]
+    types: [scrape_radar, mosaic_sumatra]
 
 jobs:
   scrape-and-update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write
 
@@ -19,18 +19,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Rust Toolchain for cfsolve
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install System Dependencies & Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgbm-dev ffmpeg libclang-dev clang cmake
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install System Dependencies & Xvfb
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb libgbm-dev ffmpeg
-          npm install
+      - name: Install Node Dependencies
+        run: npm install
 
-      - name: Run Radar Scraper with Xvfb
+      - name: Build & Run Native cfsolve Engine for BMKG Radar Mosaik
+        continue-on-error: true
+        working-directory: ./cfsolve
+        run: |
+          echo "🚀 Building native Rust cfsolve Turnstile solver..."
+          cargo build --release --bin export_bmkg_radar
+          echo "🌐 Menjalankan cfsolve engine untuk menembus Turnstile & download radar WMS Sumatera..."
+          ./target/release/export_bmkg_radar .. || true
+
+      - name: Run Radar Map Compositor & Telegram Dispatcher
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
@@ -40,9 +54,9 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" node scraper.js
 
-      - name: Commit & Push radar-frames.json for GitHub Pages
+      - name: Commit & Push radar-frames.json & radar images for GitHub Pages
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add radar-frames.json || true
-          git diff --staged --quiet || (git commit -m "chore: update radar frames data [skip ci]" && git push)
+          git add radar-frames.json radar_sumsel_*.png || true
+          git diff --staged --quiet || (git commit -m "chore: update radar frames & mosaik layers [skip ci]" && git push)
