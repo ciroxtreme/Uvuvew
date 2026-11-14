@@ -1,13 +1,16 @@
 name: Scrape Radar Cuaca BMKG
 
 on:
-  # schedule:
-  #   - cron: '*/10 * * * *'  # Dimatikan sesuai instruksi Tuan Ciro
+  schedule:
+    - cron: '*/10 * * * *'  # Aktif setiap 10 menit
   workflow_dispatch:        # Bisa dijalankan manual lewat tombol 'Run workflow'
   repository_dispatch:      # Bisa dipanggil dari Cloudflare Worker / Webhook
     types: [scrape_radar, mosaic_sumatra]
 
-# Concurrency dinonaktifkan agar run tunggal tidak ter-cancel di tengah jalan
+# Proteksi Anti-Spam & Anti-Tumpuk: Maksimal hanya 1 antrean yang jalan
+concurrency:
+  group: radar-scrape
+  cancel-in-progress: false
 
 jobs:
   scrape-and-update:
