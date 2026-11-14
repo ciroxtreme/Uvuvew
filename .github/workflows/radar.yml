@@ -7,10 +7,7 @@ on:
   repository_dispatch:      # Bisa dipanggil dari Cloudflare Worker / Webhook
     types: [scrape_radar, mosaic_sumatra]
 
-# Cegah penumpukan antrean run ganda
-concurrency:
-  group: radar-update
-  cancel-in-progress: true
+# Concurrency dinonaktifkan agar run tunggal tidak ter-cancel di tengah jalan
 
 jobs:
   scrape-and-update:
