@@ -53,7 +53,9 @@ jobs:
           ./target/release/export_bmkg_radar .. || true
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
-        run: python3 stitch_tiles.py || true
+        run: |
+          python3 stitch_tiles.py || true
+          python3 render_mosaik.py || true
 
       - name: Run Radar Map Compositor & Telegram Dispatcher
         env:

@@ -262,8 +262,15 @@ async function scrapeBMKGMaps(wibTime) {
       const mapEl = await page.$('#map');
       
       // 1. Ambil screenshot statis frame terbaru
-      const screenshot = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
-      const buffer = Buffer.from(screenshot);
+      let buffer;
+      const directMosaikPath = path.resolve(__dirname, 'mosaik_sumatera_latest.jpg');
+      if (reg.key === 'sumatera' && fs.existsSync(directMosaikPath)) {
+        buffer = fs.readFileSync(directMosaikPath);
+        console.log('Menggunakan mosaik_sumatera_latest.jpg hasil stitch langsung!');
+      } else {
+        const screenshot = await mapEl.screenshot({ type: 'jpeg', quality: 92 });
+        buffer = Buffer.from(screenshot);
+      }
 
       await uploadToTelegramAndKV(
         buffer,
