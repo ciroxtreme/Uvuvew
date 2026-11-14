@@ -2,36 +2,8 @@
   {
     "name": "sidarma_mosaic_cmax:Indonesia_202611141950",
     "timestamp": "202611141950",
-    "label": "14 Nov 2026 • 19.50",
+    "label": "14 Nov 2026 \u2022 19.50",
     "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611141950.png",
-    "type": "national_mosaic"
-  },
-  {
-    "name": "sidarma_mosaic_cmax:Indonesia_202611141945",
-    "timestamp": "202611141945",
-    "label": "14 Nov 2026 • 19.45",
-    "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611141945.png",
-    "type": "national_mosaic"
-  },
-  {
-    "name": "sidarma_mosaic_cmax:Indonesia_202611141940",
-    "timestamp": "202611141940",
-    "label": "14 Nov 2026 • 19.40",
-    "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611141940.png",
-    "type": "national_mosaic"
-  },
-  {
-    "name": "sidarma_mosaic_cmax:Indonesia_202611141935",
-    "timestamp": "202611141935",
-    "label": "14 Nov 2026 • 19.35",
-    "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611141935.png",
-    "type": "national_mosaic"
-  },
-  {
-    "name": "sidarma_mosaic_cmax:Indonesia_202611141930",
-    "timestamp": "202611141930",
-    "label": "14 Nov 2026 • 19.30",
-    "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611141930.png",
     "type": "national_mosaic"
   }
 ]
