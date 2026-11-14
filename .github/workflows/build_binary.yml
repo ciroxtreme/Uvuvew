@@ -1,0 +1,42 @@
+name: Build & Release Precompiled cfsolve Binary
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-dev clang cmake
+
+      - name: Build Release Binary
+        run: |
+          cd cfsolve
+          cargo build --release --bin export_bmkg_radar
+          cp target/release/export_bmkg_radar ../export_bmkg_radar_linux_x86_64
+          cd ..
+          strip export_bmkg_radar_linux_x86_64
+          tar -czvf export_bmkg_radar_linux_x86_64.tar.gz export_bmkg_radar_linux_x86_64
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: cfsolve-bin-v1
+          name: "Precompiled cfsolve Native Engine v1"
+          files: export_bmkg_radar_linux_x86_64.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
