@@ -123,10 +123,10 @@
       center = [-7.15, 109.8];
       zoom = 7;
       title = "📡 RADAR BMKG: JAWA, BALI & SEKITARNYA";
-    } else if (region === 'sumatera') {
+    } else if (region === 'sumatera' || region === 'mosaik') {
       center = [-0.5, 101.5];
       zoom = 6;
-      title = "📡 RADAR BMKG: SUMATERA";
+      title = "📡 RADAR DOPPLER BMKG: SUMATERA (MOSAIK)";
     } else if (region === 'kalimantan') {
       center = [-0.2, 113.8];
       zoom = 6;
@@ -176,13 +176,17 @@
       try {
         const isLocalDoppler = (region === 'rumah' || region === 'palembang' || region === 'sumsel' || region === 'mosaik' || region === 'sumatera');
 
-        // Lapisan Citra Satelit Potensi Curah Hujan Himawari-9 (selalu dinamis & up to date)
+        // Lapisan Satelit HANYA aktif jika BUKAN mode mosaik Sumatera murni
+        const isMosaikSumatera = (region === 'sumatera' || region === 'mosaik');
         const himaUrl = 'https://inderaja.bmkg.go.id/IMAGE/HIMA/H08_RP_Indonesia.png?_t=' + Date.now();
         const himaBounds = [[20.000000, 90.000000], [-20.000000, 150.000000]];
-        const himaLayer = L.imageOverlay(himaUrl, himaBounds, {
-          opacity: isLocalDoppler ? 0.40 : 0.85,
-          zIndex: 350
-        }).addTo(map);
+        let himaLayer = null;
+        if (!isMosaikSumatera) {
+          himaLayer = L.imageOverlay(himaUrl, himaBounds, {
+            opacity: isLocalDoppler ? 0.40 : 0.85,
+            zIndex: 350
+          }).addTo(map);
+        }
 
         if (isLocalDoppler) {
           // Sesuaikan Bounding Box Overlay jika Region Sumatera / Mosaik
@@ -244,7 +248,8 @@
 
           // Cek apakah Doppler radar BMKG lokal macet / usang (> 2 jam yang lalu)
           let isDopplerStale = false;
-          if (frames.length > 0) {
+          // Khusus mode Mosaik Sumatera, JANGAN PERNAH fallback ke Himawari! Selalu tampilkan radar Doppler murni!
+          if (!isMosaikSumatera && frames.length > 0) {
             const latestFrameTime = frames[frames.length - 1].timestamp;
             if (latestFrameTime && (Date.now() - latestFrameTime > 2 * 3600 * 1000)) {
               isDopplerStale = true;
@@ -267,8 +272,8 @@
 
             document.getElementById('timestamp').innerText = 'Observasi Radar Doppler & Satelit BMKG: ' + frames[frames.length - 1].timeLabel;
           } else {
-            // Doppler tidak tersedia atau sedang macet -> Tampilkan Satelit Himawari-9 Real-Time
-            himaLayer.setOpacity(0.88);
+            // Doppler tidak tersedia atau sedang macet -> Tampilkan Satelit Himawari-9 Real-Time jika bukan mosaik
+            if (himaLayer) himaLayer.setOpacity(0.88);
             document.getElementById('timestamp').innerText = 'Observasi Satelit Himawari-9 Live: ' + nowTimeStr;
             frames = []; // Nonaktifkan deteksi radar usang agar tidak salah kirim alert
           }
