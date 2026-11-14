@@ -154,10 +154,10 @@
       L.marker([-2.5858, 104.12295], { icon: houseIcon, zIndexOffset: 1000 }).addTo(map);
     }
 
-    // Peta dasar Esri World Street Map (peta jalan & nama kota yang sangat jelas)
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    // Peta dasar OpenStreetMap Standar Publik (Gratis, Tanpa Token, Cepat & Lengkap)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
-      attribution: 'Esri'
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     window.radarOverlays = [];
