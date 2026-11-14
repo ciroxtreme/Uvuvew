@@ -48,20 +48,34 @@ fn main() -> Result<()> {
 
     let runtime = Builder::new_multi_thread().enable_all().build()?;
     runtime.block_on(async {
-        eprintln!("[1] Memulai bypass Cloudflare Turnstile di bmkg.go.id/cuaca/radar...");
+        eprintln!("[1] Memulai bypass Cloudflare Turnstile di bmkg.go.id/cuaca/radar (dengan auto-retry)...");
         let base_url = Url::parse("https://www.bmkg.go.id/cuaca/radar")?;
         
-        let outcome = browser.solve(&base_url, &options).await?;
-        let (html, clearance_cookie) = match outcome {
-            Outcome::Cleared(cleared) => {
-                eprintln!("[+] Cloudflare Berhasil Ditembus! clearance length: {}", cleared.clearance.len());
-                (cleared.page.html, format!("cf_clearance={}", cleared.clearance))
+        let mut html = String::new();
+        let mut clearance_cookie = String::new();
+        let max_retries = 3;
+
+        for attempt in 1..=max_retries {
+            eprintln!("[*] Percobaan solve Turnstile ke-{}/{}...", attempt, max_retries);
+            match browser.solve(&base_url, &options).await {
+                Ok(Outcome::Cleared(cleared)) => {
+                    eprintln!("[+] Cloudflare Berhasil Ditembus! clearance length: {}", cleared.clearance.len());
+                    html = cleared.page.html;
+                    clearance_cookie = format!("cf_clearance={}", cleared.clearance);
+                    break;
+                }
+                Ok(Outcome::Token(token)) => {
+                    eprintln!("[+] Turnstile token didapat: {}", token);
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("[-] Percobaan {} gagal: {}", attempt, e);
+                    if attempt < max_retries {
+                        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+                    }
+                }
             }
-            Outcome::Token(token) => {
-                eprintln!("[+] Cloudflare Berhasil Ditembus dengan token: {}", token);
-                ("".to_string(), "".to_string())
-            }
-        };
+        }
 
         if html.is_empty() {
             anyhow::bail!("Halaman HTML BMKG kosong setelah bypass challenge!");
