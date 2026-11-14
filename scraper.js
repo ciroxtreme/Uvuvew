@@ -172,60 +172,7 @@ async function scrapeBMKGMaps(wibTime) {
 
     const matches = [...text.matchAll(/var MyDateString([0-9]{2})\s*=\s*['"]([^'"]+)['"]/g)];
     if (matches.length > 0) {
-      const frames = matches.map(m => {
-        const path = m[2];
-        const matchTime = path.match(/([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/);
-        let timeLabel = "";
-        if (matchTime) {
-          const d = new Date(Date.UTC(parseInt(matchTime[1]), parseInt(matchTime[2]) - 1, parseInt(matchTime[3]), parseInt(matchTime[4]), parseInt(matchTime[5])));
-          timeLabel = d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-        }
-        return {
-          id: m[1],
-          url: 'https://radar.cuacasumsel.com/' + path,
-          path: path,
-          timeLabel: timeLabel
-        };
-      }).reverse();
-
-      if (frames.length > 0) {
-        obsTimeSumsel = frames[frames.length - 1].timeLabel;
-      }
-
-      const framesData = {
-        updatedAt: new Date().toISOString(),
-        wibTime: wibTime,
-        obsTime: obsTimeSumsel,
-        frames: frames
-      };
-
-      // Tulis file radar-frames.json untuk static hosting di GitHub Pages
-      let shouldOverwriteFrames = true;
-      try {
-        if (fs.existsSync(path.resolve(__dirname, 'radar-frames.json'))) {
-          const existing = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'radar-frames.json'), 'utf8'));
-          if (existing && existing.region && existing.region.indexOf('WMS Nasional') !== -1) {
-            shouldOverwriteFrames = false;
-            console.log('Mempertahankan radar-frames.json WMS Nasional BMKG');
-          }
-        }
-      } catch (e) {}
-
-      if (shouldOverwriteFrames) {
-        fs.writeFileSync(path.resolve(__dirname, 'radar-frames.json'), JSON.stringify(framesData, null, 2));
-      }
-
-      // Simpan ke Cloudflare KV
-      const kvFramesUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_FRAMES`;
-      await fetch(kvFramesUrl, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${CF_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(framesData)
-      });
-      console.log('✅ Daftar frame radar tersimpan ke radar-frames.json & Cloudflare KV (LATEST_RADAR_FRAMES)!');
+      console.log('📡 Data radar SMB II Palembang terdeteksi untuk pemantauan lokal Sumsel.');
     }
   } catch (e) {
     console.warn('Gagal ambil data cuacasumsel:', e.message);
