@@ -51,9 +51,15 @@ jobs:
 
       - name: Build & Run Native cfsolve Engine
         continue-on-error: true
+        env:
+          PROXY_URL: ${{ secrets.PROXY_URL }}
         run: |
-          echo "🚀 Running native Rust cfsolve Turnstile solver..."
-          cd cfsolve && cargo run --release --bin export_bmkg_radar -- .. || true
+          echo "🚀 Running native Rust cfsolve Turnstile solver via SOCKS5 Tunnel..."
+          PROXY_ARG=""
+          if [ -n "$PROXY_URL" ]; then
+            PROXY_ARG="--proxy $PROXY_URL"
+          fi
+          cd cfsolve && cargo run --release --bin export_bmkg_radar -- .. $PROXY_ARG || true
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
         run: |
