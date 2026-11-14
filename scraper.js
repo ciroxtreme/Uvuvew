@@ -200,7 +200,20 @@ async function scrapeBMKGMaps(wibTime) {
       };
 
       // Tulis file radar-frames.json untuk static hosting di GitHub Pages
-      fs.writeFileSync(path.resolve(__dirname, 'radar-frames.json'), JSON.stringify(framesData, null, 2));
+      let shouldOverwriteFrames = true;
+      try {
+        if (fs.existsSync(path.resolve(__dirname, 'radar-frames.json'))) {
+          const existing = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'radar-frames.json'), 'utf8'));
+          if (existing && existing.region && existing.region.indexOf('WMS Nasional') !== -1) {
+            shouldOverwriteFrames = false;
+            console.log('Mempertahankan radar-frames.json WMS Nasional BMKG');
+          }
+        }
+      } catch (e) {}
+
+      if (shouldOverwriteFrames) {
+        fs.writeFileSync(path.resolve(__dirname, 'radar-frames.json'), JSON.stringify(framesData, null, 2));
+      }
 
       // Simpan ke Cloudflare KV
       const kvFramesUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_FRAMES`;

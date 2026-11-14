@@ -35,6 +35,14 @@ jobs:
       - name: Install Node Dependencies
         run: npm install
 
+      - name: Setup Python & Pillow for Tile Stitching
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: pip install Pillow
+
       - name: Build & Run Native cfsolve Engine for BMKG Radar Mosaik
         continue-on-error: true
         working-directory: ./cfsolve
@@ -43,6 +51,9 @@ jobs:
           cargo build --release --bin export_bmkg_radar
           echo "🌐 Menjalankan cfsolve engine untuk menembus Turnstile & download radar WMS Sumatera..."
           ./target/release/export_bmkg_radar .. || true
+
+      - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
+        run: python3 stitch_tiles.py || true
 
       - name: Run Radar Map Compositor & Telegram Dispatcher
         env:
