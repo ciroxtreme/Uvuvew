@@ -185,33 +185,53 @@
         }).addTo(map);
 
         if (isLocalDoppler) {
-          const bounds = [[-2.917444 - 1.8, 104.702556 - 1.8], [-2.917444 + 1.8, 104.702556 + 1.8]];
+          // Bounds Radar Sumsel & Sekitarnya (BMKG Mosaic CMAX BBOX: 102.5, -4.5, 106.0, -1.5)
+          const bounds = [[-4.5, 102.5], [-1.5, 106.0]];
           
           let frames = [];
+          // 1. Coba ambil frame live BMKG resmi dari Cloudflare Worker / GitHub
           try {
-            const res = await fetch('https://radar.cuacasumsel.com/');
-            const html = await res.text();
-            const matches = [...html.matchAll(/var MyDateString([0-9]{2})\s*=\s*['"]([^'"]+)['"]/g)];
-            if (matches.length > 0) {
-              frames = matches.map(m => {
-                const path = m[2];
-                const matchTime = path.match(/([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/);
-                let timeLabel = "";
-                let frameTimestamp = 0;
-                if (matchTime) {
-                  const d = new Date(Date.UTC(parseInt(matchTime[1]), parseInt(matchTime[2]) - 1, parseInt(matchTime[3]), parseInt(matchTime[4]), parseInt(matchTime[5])));
-                  frameTimestamp = d.getTime();
-                  timeLabel = d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-                }
-                return {
-                  url: 'https://radar.cuacasumsel.com/' + path,
-                  timeLabel,
-                  timestamp: frameTimestamp
-                };
-              }).reverse();
+            const apiUrl = (new URLSearchParams(window.location.search)).get('api') || 'https://telegram.ciroxtreme.workers.dev/api/radar-frames';
+            const res = await fetch(apiUrl);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.frames && data.frames.length > 0) {
+                frames = data.frames.map(f => {
+                  const matchTime = (f.path || f.url || "").match(/([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/);
+                  let frameTimestamp = Date.now();
+                  if (matchTime) {
+                    const d = new Date(Date.UTC(parseInt(matchTime[1]), parseInt(matchTime[2]) - 1, parseInt(matchTime[3]), parseInt(matchTime[4]), parseInt(matchTime[5])));
+                    frameTimestamp = d.getTime();
+                  }
+                  return {
+                    url: f.url,
+                    timeLabel: f.timeLabel || "Live WIB",
+                    timestamp: frameTimestamp
+                  };
+                });
+              }
             }
           } catch(e) {
-            console.warn("Gagal fetch daftar frame radar:", e);
+            console.warn("Gagal fetch worker radar-frames API:", e);
+          }
+
+          // Fallback legacy jika api kosong
+          if (frames.length === 0) {
+            try {
+              const resLegacy = await fetch('https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar-frames.json');
+              if (resLegacy.ok) {
+                const legData = await resLegacy.json();
+                if (legData && legData.frames) {
+                  frames = legData.frames.map(f => ({
+                    url: f.url,
+                    timeLabel: f.timeLabel || "Live WIB",
+                    timestamp: Date.now()
+                  }));
+                }
+              }
+            } catch(e2) {
+              console.warn("Gagal fetch fallback GitHub:", e2);
+            }
           }
 
           const now = new Date();
