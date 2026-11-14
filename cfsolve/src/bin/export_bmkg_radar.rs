@@ -22,11 +22,21 @@ fn tile_bounds_3857(x: i32, y: i32, z: i32) -> String {
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
-    let out_dir = if args.len() > 1 {
-        &args[1]
-    } else {
-        "."
-    };
+    let mut out_dir = ".";
+    let mut proxy_arg: Option<String> = None;
+
+    let mut i = 1;
+    while i < args.len() {
+        if args[i] == "--proxy" && i + 1 < args.len() {
+            proxy_arg = Some(args[i + 1].clone());
+            i += 2;
+        } else if !args[i].starts_with("--") {
+            out_dir = &args[i];
+            i += 1;
+        } else {
+            i += 1;
+        }
+    }
 
     let fingerprint_candidates = [
         "cfsolve/profiles/safari-26-ios.json",
@@ -44,7 +54,11 @@ fn main() -> Result<()> {
 
     eprintln!("[*] Memuat fingerprint browser: {:?}", profile_path);
     let browser = Browser::read(&profile_path)?;
-    let options = Options::default();
+    let mut options = Options::default();
+    if let Some(ref p) = proxy_arg {
+        eprintln!("[*] Menggunakan proxy: {}", p);
+        options.proxy = Some(p.clone());
+    }
 
     let runtime = Builder::new_multi_thread().enable_all().build()?;
     runtime.block_on(async {
