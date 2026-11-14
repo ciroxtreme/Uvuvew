@@ -49,13 +49,11 @@ jobs:
       - name: Install Python Dependencies
         run: pip install Pillow
 
-      - name: Build & Run Native cfsolve Engine with Auto-Proxy Rotation
+      - name: Build & Run Native cfsolve Engine
         continue-on-error: true
         run: |
-          echo "🚀 Building native Rust cfsolve Turnstile solver..."
-          cd cfsolve && cargo build --release --bin export_bmkg_radar && cd ..
-          echo "🌐 Menjalankan rotator proxy acak untuk menembus Turnstile BMKG..."
-          python3 cf_proxy_rotator.py . || true
+          echo "🚀 Running native Rust cfsolve Turnstile solver..."
+          cd cfsolve && cargo run --release --bin export_bmkg_radar -- .. || true
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
         run: |
