@@ -1,9 +1,9 @@
 name: Scrape Radar Cuaca BMKG
 
 on:
-  # schedule:
-  #   - cron: '*/10 * * * *'  # Dinonaktifkan sementara sesuai instruksi Tuan Ciro sampai uji manual tuntas
-  workflow_dispatch:        # Bisa dijalankan manual lewat tombol 'Run workflow' di GitHub Actions
+  schedule:
+    - cron: '*/10 * * * *'  # Aktif otomatis setiap 10 menit
+  workflow_dispatch:        # Tetap bisa dijalankan manual lewat tombol 'Run workflow'
   repository_dispatch:      # Bisa dipanggil dari Cloudflare Worker / Webhook
     types: [scrape_radar, mosaic_sumatra]
 
