@@ -20,18 +20,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Rust Toolchain for cfsolve
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ./cfsolve
-
       - name: Install System Dependencies & Xvfb
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgbm-dev ffmpeg libclang-dev clang cmake
+          sudo apt-get install -y xvfb libgbm-dev ffmpeg
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,17 +41,21 @@ jobs:
       - name: Install Python Dependencies
         run: pip install Pillow
 
-      - name: Build & Run Native cfsolve Engine
+      - name: Download & Run Precompiled cfsolve Engine
         continue-on-error: true
         env:
           PROXY_URL: ${{ secrets.PROXY_URL }}
         run: |
-          echo "🚀 Running native Rust cfsolve Turnstile solver via SOCKS5 Tunnel..."
+          echo "⚡ Mengunduh precompiled cfsolve native binary dari GitHub Release (instant)..."
+          curl -L -o cfsolve_bin.tar.gz https://github.com/ciroxtreme/Uvuvew/releases/download/cfsolve-bin-v1/export_bmkg_radar_linux_x86_64.tar.gz
+          tar -zxvf cfsolve_bin.tar.gz
+          chmod +x export_bmkg_radar_linux_x86_64
+          echo "🚀 Menjalankan cfsolve Turnstile solver via SOCKS5 Tunnel..."
           PROXY_ARG=""
           if [ -n "$PROXY_URL" ]; then
             PROXY_ARG="--proxy $PROXY_URL"
           fi
-          cd cfsolve && cargo run --release --bin export_bmkg_radar -- .. $PROXY_ARG || true
+          ./export_bmkg_radar_linux_x86_64 . $PROXY_ARG || true
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
         run: |
