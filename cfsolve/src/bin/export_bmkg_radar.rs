@@ -157,16 +157,16 @@ fn main() -> Result<()> {
         let y_start = 30;
         let y_end = 34; // 4 baris
 
-        eprintln!("[3] Mengunduh 16 tile radar per frame & simpan PNG tile...");
+        eprintln!("[3] Mengunduh 16 tile radar per frame secara paralel (Fast Concurrent Download)...");
 
         for (i, layer) in raw_layers[..frame_count].iter().enumerate() {
-            let layer_name = layer["name"].as_str().unwrap_or("");
-            let timestamp = layer["timestamp"].as_str().unwrap_or("");
-            let label = layer["label"].as_str().unwrap_or("");
+            let layer_name = layer["name"].as_str().unwrap_or("").to_string();
+            let timestamp = layer["timestamp"].as_str().unwrap_or("").to_string();
+            let label = layer["label"].as_str().unwrap_or("").to_string();
 
             eprintln!("  [*] Mengambil frame {}/{} ({}, layer: {})...", i + 1, frame_count, timestamp, layer_name);
 
-            let mut tile_success = 0;
+            let mut tile_tasks = Vec::new();
             for x in x_start..x_end {
                 for y in y_start..y_end {
                     let bbox = tile_bounds_3857(x, y, z);
@@ -174,7 +174,7 @@ fn main() -> Result<()> {
                     wms_url.query_pairs_mut()
                         .append_pair("service", "WMS")
                         .append_pair("request", "GetMap")
-                        .append_pair("layers", layer_name)
+                        .append_pair("layers", &layer_name)
                         .append_pair("styles", "CMAX_dBZ")
                         .append_pair("format", "image/png")
                         .append_pair("transparent", "true")
@@ -184,22 +184,45 @@ fn main() -> Result<()> {
                         .append_pair("srs", "EPSG:3857")
                         .append_pair("bbox", &bbox);
 
-                    let mut req = client.http
-                        .get(wms_url.as_str())
-                        .header("Referer", "https://www.bmkg.go.id/cuaca/radar")
-                        .header("Accept", "image/png,*/*");
+                    let client_http = client.http.clone();
+                    let cookie = clearance_cookie.clone();
+                    let tile_path = format!("{}/tile_{}_{}_{}_{}.png", out_dir, timestamp, z, x, y);
 
-                    if !clearance_cookie.is_empty() {
-                        req = req.header("Cookie", &clearance_cookie);
-                    }
+                    tile_tasks.push(tokio::spawn(async move {
+                        let mut req = client_http
+                            .get(wms_url.as_str())
+                            .header("Referer", "https://www.bmkg.go.id/cuaca/radar")
+                            .header("Accept", "image/png,*/*");
 
-                    let resp = req.send().await?;
-                    if resp.status().is_success() {
-                        let bytes = resp.collect().await?.to_bytes();
-                        let tile_name = format!("tile_{}_{}_{}_{}.png", timestamp, z, x, y);
-                        let tile_path = format!("{}/{}", out_dir, tile_name);
-                        let mut f = File::create(&tile_path)?;
-                        f.write_all(&bytes)?;
+                        if !cookie.is_empty() {
+                            req = req.header("Cookie", &cookie);
+                        }
+
+                        match req.send().await {
+                            Ok(resp) if resp.status().is_success() => {
+                                match resp.collect().await {
+                                    Ok(collected) => {
+                                        let bytes = collected.to_bytes();
+                                        if let Ok(mut f) = File::create(&tile_path) {
+                                            if f.write_all(&bytes).is_ok() {
+                                                return true;
+                                            }
+                                        }
+                                        false
+                                    }
+                                    Err(_) => false,
+                                }
+                            }
+                            _ => false,
+                        }
+                    }));
+                }
+            }
+
+            let mut tile_success = 0;
+            for task in tile_tasks {
+                if let Ok(success) = task.await {
+                    if success {
                         tile_success += 1;
                     }
                 }
@@ -214,7 +237,7 @@ fn main() -> Result<()> {
                     "layerName": layer_name,
                     "tilePrefix": format!("tile_{}_{}", timestamp, z)
                 }));
-                eprintln!("  [+] Frame {} berhasil mengunduh 16 tile!", i + 1);
+                eprintln!("  [+] Frame {} berhasil mengunduh 16 tile serentak!", i + 1);
             } else {
                 eprintln!("  [-] Frame {} hanya dapat {}/16 tile", i + 1, tile_success);
             }
