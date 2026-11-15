@@ -1,0 +1,30 @@
+name: Test BMKG with Cloudflare WARP in Uvuvew
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-bmkg-warp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install & Configure Cloudflare WARP (SOCKS5 Mode)
+        run: |
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt-get update -y
+          sudo apt-get install -y cloudflare-warp
+          sudo warp-cli --accept-tos registration new || true
+          sudo warp-cli --accept-tos mode proxy
+          sudo warp-cli --accept-tos proxy port 40000
+          sudo warp-cli --accept-tos connect
+          sleep 5
+          warp-cli --accept-tos status || true
+          curl -x socks5://127.0.0.1:40000 https://cloudflare.com/cdn-cgi/trace
+
+      - name: Download & Test cfsolve with Local WARP Proxy
+        run: |
+          curl -L -o cfsolve_bin.tar.gz https://github.com/ciroxtreme/Uvuvew/releases/download/cfsolve-bin-v1/export_bmkg_radar_linux_x86_64.tar.gz
+          tar -zxvf cfsolve_bin.tar.gz
+          chmod +x export_bmkg_radar_linux_x86_64
+          echo "Testing export_bmkg_radar via WARP SOCKS5 proxy..."
+          ./export_bmkg_radar_linux_x86_64 . --proxy socks5://127.0.0.1:40000 || true
