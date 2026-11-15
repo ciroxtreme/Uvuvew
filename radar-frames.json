@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-14T23:52:06.825460369+00:00",
-  "wibTime": "15/11/2026, 06.52 WIB",
-  "obsTime": "14 Nov 2026 \u2022 23.50",
+  "updatedAt": "2026-11-15T00:02:08.082494826+00:00",
+  "wibTime": "15/11/2026, 07.02 WIB",
+  "obsTime": "14 Nov 2026 \u2022 23.55",
   "region": "All Sumatera (WMS Nasional BMKG)",
   "bounds": [
     [
@@ -15,7 +15,7 @@
   ],
   "frames": [
     {
-      "id": "40",
+      "id": "50",
       "filename": "radar_sumsel_202611142330.png",
       "timestamp": "202611142330",
       "timeLabel": "14 Nov 2026 \u2022 23.30",
@@ -25,7 +25,7 @@
       "path": "radar_sumsel_202611142330.png"
     },
     {
-      "id": "30",
+      "id": "40",
       "filename": "radar_sumsel_202611142335.png",
       "timestamp": "202611142335",
       "timeLabel": "14 Nov 2026 \u2022 23.35",
@@ -35,7 +35,7 @@
       "path": "radar_sumsel_202611142335.png"
     },
     {
-      "id": "20",
+      "id": "30",
       "filename": "radar_sumsel_202611142340.png",
       "timestamp": "202611142340",
       "timeLabel": "14 Nov 2026 \u2022 23.40",
@@ -45,7 +45,7 @@
       "path": "radar_sumsel_202611142340.png"
     },
     {
-      "id": "10",
+      "id": "20",
       "filename": "radar_sumsel_202611142345.png",
       "timestamp": "202611142345",
       "timeLabel": "14 Nov 2026 \u2022 23.45",
@@ -55,7 +55,7 @@
       "path": "radar_sumsel_202611142345.png"
     },
     {
-      "id": "00",
+      "id": "10",
       "filename": "radar_sumsel_202611142350.png",
       "timestamp": "202611142350",
       "timeLabel": "14 Nov 2026 \u2022 23.50",
@@ -63,6 +63,16 @@
       "tilePrefix": "tile_202611142350_6",
       "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611142350.png",
       "path": "radar_sumsel_202611142350.png"
+    },
+    {
+      "id": "00",
+      "filename": "radar_sumsel_202611142355.png",
+      "timestamp": "202611142355",
+      "timeLabel": "14 Nov 2026 \u2022 23.55",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611142355",
+      "tilePrefix": "tile_202611142355_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611142355.png",
+      "path": "radar_sumsel_202611142355.png"
     }
   ]
 }
