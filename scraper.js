@@ -158,26 +158,6 @@ async function sendRainAlertToUser(mediaTarget, alertCaption, isPhoto = false) {
 
 // Render Peta Radar BMKG Asli per Wilayah
 async function scrapeBMKGMaps(wibTime) {
-  // Ambil file radar Doppler terbaru & simpan daftar frame
-  let latestRadarSumsel = null;
-  let obsTimeSumsel = null;
-  try {
-    const res = await fetch('https://radar.cuacasumsel.com/');
-    const text = await res.text();
-    const match = text.match(/var MyDateString00=\s*['"]([^'"]+)['"]/);
-    if (match && match[1]) {
-      latestRadarSumsel = 'https://radar.cuacasumsel.com/' + match[1];
-      console.log('📡 Radar Doppler BMKG Sumsel live:', latestRadarSumsel);
-    }
-
-    const matches = [...text.matchAll(/var MyDateString([0-9]{2})\s*=\s*['"]([^'"]+)['"]/g)];
-    if (matches.length > 0) {
-      console.log('📡 Data radar SMB II Palembang terdeteksi untuk pemantauan lokal Sumsel.');
-    }
-  } catch (e) {
-    console.warn('Gagal ambil data cuacasumsel:', e.message);
-  }
-
   console.log("🗺️ Menjalankan browser untuk render peta radar BMKG...");
   const { browser, page } = await connect({
     headless: false,
@@ -198,10 +178,7 @@ async function scrapeBMKGMaps(wibTime) {
     for (const reg of regions) {
       // Gunakan engine radar-mosaik-sumatera.html untuk SEMUA wilayah (Rumah, Palembang, Sumatera)
       const htmlFile = 'radar-mosaik-sumatera.html';
-      let localHtmlPath = `file://${path.resolve(__dirname, htmlFile)}?region=${reg.key}`;
-      if (latestRadarSumsel && (reg.key === 'rumah' || reg.key === 'palembang')) {
-        localHtmlPath += `&radarImg=${encodeURIComponent(latestRadarSumsel)}`;
-      }
+      const localHtmlPath = `file://${path.resolve(__dirname, htmlFile)}?region=${reg.key}`;
       console.log(`🗺️ Merender radar BMKG [${reg.name}]...`);
       await page.goto(localHtmlPath, { waitUntil: 'networkidle2', timeout: 35000 });
       await page.waitForFunction('window.__RADAR_DONE__ === true', { timeout: 25000 });
@@ -277,10 +254,21 @@ async function scrapeBMKGMaps(wibTime) {
       }
 
       // 3. Khusus wilayah RUMAH (Sungai Lilin): Periksa apakah ada awan hujan mendekat
-      // Dijalankan SELALU (mandiri) baik saat multi-frame radar Doppler maupun single-frame Satelit Himawari-9
+      // Menggunakan modul analisis presisi radar mosaik (detect_rain.py)
       if (reg.key === 'rumah') {
         try {
-          const rainStatus = await page.evaluate(() => window.__RAIN_DETECTION__ || null);
+          let rainStatus = null;
+          try {
+            const detectPy = path.resolve(__dirname, 'detect_rain.py');
+            if (fs.existsSync(detectPy)) {
+              const pyOut = execSync(`python3 "${detectPy}" "${__dirname}"`, { encoding: 'utf8' }).trim();
+              rainStatus = JSON.parse(pyOut);
+            }
+          } catch (pyErr) {
+            console.warn("Fallback deteksi via page evaluate:", pyErr.message);
+            rainStatus = await page.evaluate(() => window.__RAIN_DETECTION__ || null);
+          }
+
           console.log("🔍 Status Deteksi Awan Hujan Rumah:", JSON.stringify(rainStatus));
           if (rainStatus && rainStatus.hasRain) {
             // Cek apakah baru saja mengirim notifikasi dalam 45 menit terakhir agar tidak spam
@@ -303,16 +291,16 @@ async function scrapeBMKGMaps(wibTime) {
 
             if (shouldAlert) {
               const intensitas = rainStatus.isHeavy ? "LEBAT / BADAI ⛈️" : "SEDANG - HUJAN 🌧️";
-              const sensorLabel = rainStatus.sensor === "satelit_himawari" ? "🛰️ Citra Satelit Himawari-9 BMKG" : "📡 Radar Doppler BMKG";
+              const sensorLabel = "📡 Radar Doppler Mosaik BMKG";
               const jarakInfo = (rainStatus.distanceKm && rainStatus.distanceKm > 0) ? `berjarak sekitar *~${rainStatus.distanceKm} km* dari rumah` : "berada tepat di atas wilayah rumah";
               const alertMsg = 
                 `⚠️ *PERINGATAN HUJAN BMKG!*\n\n` +
                 `Tuan Ciro, ${sensorLabel} mendeteksi potensi hujan intensitas *${intensitas}* ${jarakInfo}!\n\n` +
-                `🕒 *Observasi:* ${rainStatus.obsTime || wibTime} WIB\n` +
+                `🕒 *Observasi:* ${rainStatus.obsTime || wibTime}\n` +
                 `📍 *Lokasi Pantau:* Sekitar Rumah (Sungai Lilin)\n\n` +
                 `👉 *Jemuran atau aktivitas luar segera diamankan ya Tuan Ciro!* 🏃‍♂️👕🌧️`;
 
-              // Jika ada video animasi kirim animasi, jika mode satelit himawari kirim foto tangkapan radar rumah
+              // Jika ada video animasi kirim animasi, jika tidak kirim foto tangkapan radar rumah
               if (generatedVideoPath && fs.existsSync(generatedVideoPath)) {
                 await sendRainAlertToUser(generatedVideoPath, alertMsg, false);
               } else {
