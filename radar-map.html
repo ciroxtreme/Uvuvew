@@ -162,6 +162,22 @@
 
     window.radarOverlays = [];
     window.radarFrameTimes = [];
+    function formatToWibLabel(label, ts) {
+      if (ts && /^\d{12}$/.test(ts)) {
+        const y = parseInt(ts.slice(0, 4), 10);
+        const m = parseInt(ts.slice(4, 6), 10) - 1;
+        const d = parseInt(ts.slice(6, 8), 10);
+        const H = parseInt(ts.slice(8, 10), 10);
+        const M = parseInt(ts.slice(10, 12), 10);
+        const dUtc = new Date(Date.UTC(y, m, d, H, M));
+        const dWib = new Date(dUtc.getTime() + 7 * 3600 * 1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        return `${pad(dWib.getUTCDate())} ${months[dWib.getUTCMonth()]} ${dWib.getUTCFullYear()} • ${pad(dWib.getUTCHours())}.${pad(dWib.getUTCMinutes())} WIB`;
+      }
+      return label;
+    }
+
     window.setRadarFrame = function(idx) {
       if (!window.radarOverlays || window.radarOverlays.length === 0) return;
       window.radarOverlays.forEach((ovl, i) => {
@@ -196,7 +212,7 @@
                   }
                   return {
                     url: f.url,
-                    timeLabel: f.timeLabel || "Live WIB",
+                    timeLabel: formatToWibLabel(f.timeLabel, f.timestamp),
                     timestamp: frameTimestamp
                   };
                 });
@@ -215,7 +231,7 @@
                 if (legData && legData.frames) {
                   frames = legData.frames.map(f => ({
                     url: f.url,
-                    timeLabel: f.timeLabel || "Live WIB",
+                    timeLabel: formatToWibLabel(f.timeLabel, f.timestamp),
                     timestamp: Date.now()
                   }));
                 }

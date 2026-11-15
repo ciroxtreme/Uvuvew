@@ -18,7 +18,7 @@ def render_mosaik():
     if not frames:
         return
 
-    latest = frames[0] if frames else None
+    latest = frames[-1] if frames else None
     ts = latest.get("timestamp")
     radar_file = os.path.join(os.path.dirname(__file__), f"radar_sumsel_{ts}.png")
     if not os.path.exists(radar_file):
