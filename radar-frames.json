@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-17T05:02:38.659828114+00:00",
-  "wibTime": "17/11/2026, 12.02 WIB",
-  "obsTime": "17 Nov 2026 \u2022 05.00",
+  "updatedAt": "2026-11-17T05:12:00.005763673+00:00",
+  "wibTime": "17/11/2026, 12.12 WIB",
+  "obsTime": "17 Nov 2026 \u2022 05.10",
   "region": "All Sumatera (WMS Nasional BMKG)",
   "bounds": [
     [
@@ -15,7 +15,7 @@
   ],
   "frames": [
     {
-      "id": "20",
+      "id": "40",
       "filename": "radar_sumsel_202611170450.png",
       "timestamp": "202611170450",
       "timeLabel": "17 Nov 2026 \u2022 04.50",
@@ -25,7 +25,7 @@
       "path": "radar_sumsel_202611170450.png"
     },
     {
-      "id": "10",
+      "id": "30",
       "filename": "radar_sumsel_202611170455.png",
       "timestamp": "202611170455",
       "timeLabel": "17 Nov 2026 \u2022 04.55",
@@ -35,7 +35,7 @@
       "path": "radar_sumsel_202611170455.png"
     },
     {
-      "id": "00",
+      "id": "20",
       "filename": "radar_sumsel_202611170500.png",
       "timestamp": "202611170500",
       "timeLabel": "17 Nov 2026 \u2022 05.00",
@@ -43,6 +43,26 @@
       "tilePrefix": "tile_202611170500_6",
       "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611170500.png",
       "path": "radar_sumsel_202611170500.png"
+    },
+    {
+      "id": "10",
+      "filename": "radar_sumsel_202611170505.png",
+      "timestamp": "202611170505",
+      "timeLabel": "17 Nov 2026 \u2022 05.05",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611170505",
+      "tilePrefix": "tile_202611170505_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611170505.png",
+      "path": "radar_sumsel_202611170505.png"
+    },
+    {
+      "id": "00",
+      "filename": "radar_sumsel_202611170510.png",
+      "timestamp": "202611170510",
+      "timeLabel": "17 Nov 2026 \u2022 05.10",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611170510",
+      "tilePrefix": "tile_202611170510_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611170510.png",
+      "path": "radar_sumsel_202611170510.png"
     }
   ]
 }
