@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-18T23:02:56.581255648+00:00",
-  "wibTime": "19/11/2026, 06.02 WIB",
-  "obsTime": "18 Nov 2026 \u2022 22.50",
+  "updatedAt": "2026-11-18T23:11:44.889975430+00:00",
+  "wibTime": "19/11/2026, 06.11 WIB",
+  "obsTime": "18 Nov 2026 \u2022 23.00",
   "region": "All Sumatera (WMS Nasional BMKG)",
   "bounds": [
     [
@@ -15,7 +15,17 @@
   ],
   "frames": [
     {
-      "id": "20",
+      "id": "50",
+      "filename": "radar_sumsel_202611182245.png",
+      "timestamp": "202611182245",
+      "timeLabel": "18 Nov 2026 \u2022 22.45",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611182245",
+      "tilePrefix": "tile_202611182245_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611182245.png",
+      "path": "radar_sumsel_202611182245.png"
+    },
+    {
+      "id": "40",
       "filename": "radar_sumsel_202611182250.png",
       "timestamp": "202611182250",
       "timeLabel": "18 Nov 2026 \u2022 22.50",
@@ -23,6 +33,26 @@
       "tilePrefix": "tile_202611182250_6",
       "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611182250.png",
       "path": "radar_sumsel_202611182250.png"
+    },
+    {
+      "id": "30",
+      "filename": "radar_sumsel_202611182255.png",
+      "timestamp": "202611182255",
+      "timeLabel": "18 Nov 2026 \u2022 22.55",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611182255",
+      "tilePrefix": "tile_202611182255_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611182255.png",
+      "path": "radar_sumsel_202611182255.png"
+    },
+    {
+      "id": "20",
+      "filename": "radar_sumsel_202611182300.png",
+      "timestamp": "202611182300",
+      "timeLabel": "18 Nov 2026 \u2022 23.00",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611182300",
+      "tilePrefix": "tile_202611182300_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611182300.png",
+      "path": "radar_sumsel_202611182300.png"
     }
   ]
 }
