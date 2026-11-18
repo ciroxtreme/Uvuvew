@@ -96,13 +96,13 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          # Hapus frame radar_sumsel_*.png lama yang sudah dihapus oleh stitch_tiles.py dari git tracking
-          git add -u radar_sumsel_*.png || true
-          # Hanya tambahkan file aktif (radar-frames.json, mosaik_sumatera_latest.jpg, dan 8 radar_sumsel_*.png aktif)
-          git add radar-frames.json mosaik_sumatera_latest.jpg radar_sumsel_*.png || true
+          # Gunakan kutip tunggal pada pathspec 'radar_sumsel_*.png' agar git men-stage file PNG lama yang dihapus sekaligus PNG baru
+          git add -A 'radar_sumsel_*.png' radar-frames.json mosaik_sumatera_latest.jpg || true
           if ! git diff --staged --quiet; then
             git commit -m "chore: update radar frames & mosaik layers [skip ci]"
+            # Bersihkan perubahan unstaged lain (jika ada) agar git rebase tidak pernah tertahan
+            git checkout -- . || true
             for i in 1 2 3 4 5; do
-              git fetch origin main && git rebase origin/main && git push origin main && break || (git rebase --abort 2>/dev/null || true; sleep 2)
+              git fetch origin main && git rebase --autostash origin/main && git push origin main && break || (git rebase --abort 2>/dev/null || true; sleep 2)
             done
           fi

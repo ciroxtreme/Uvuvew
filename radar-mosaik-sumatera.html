@@ -197,15 +197,24 @@
         
         let frames = [];
         try {
-          const res = await fetch('https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar-frames.json');
-          if (res.ok) {
+          // 1. Prioritaskan radar-frames.json lokal (saat dirender oleh scraper.js / GitHub Pages) agar bebas delay cache GitHub Raw
+          let res = await fetch('./radar-frames.json?t=' + Date.now()).catch(() => null);
+          let useLocalFiles = true;
+          if (!res || !res.ok) {
+            useLocalFiles = false;
+            res = await fetch('https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar-frames.json?t=' + Date.now());
+          }
+          if (res && res.ok) {
             const data = await res.json();
             if (data && data.frames && data.frames.length > 0) {
-              frames = data.frames.map(f => ({
-                url: f.url || ('https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/' + f.path),
-                timeLabel: formatToWibLabel(f.timeLabel, f.timestamp),
-                timestamp: Date.now()
-              }));
+              frames = data.frames.map(f => {
+                const fileName = f.path || f.filename;
+                return {
+                  url: (useLocalFiles && fileName) ? ('./' + fileName + '?t=' + Date.now()) : (f.url || ('https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/' + fileName)),
+                  timeLabel: formatToWibLabel(f.timeLabel, f.timestamp),
+                  timestamp: Date.now()
+                };
+              });
             }
           }
         } catch(e) {

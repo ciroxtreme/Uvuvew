@@ -2,6 +2,7 @@ const { connect } = require('puppeteer-real-browser');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const http = require('http');
 const { execSync } = require('child_process');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
@@ -174,11 +175,40 @@ async function scrapeBMKGMaps(wibTime) {
     { key: 'sumatera', kvKey: 'LATEST_RADAR_SUMATERA_FILE_ID', animKvKey: 'LATEST_RADAR_SUMATERA_ANIM_FILE_ID', name: 'Mosaik Radar BMKG Sumatera' }
   ];
 
+  // Jalankan local HTTP static server agar browser memuat radar-frames.json & PNG hasil stitch lokal secara instan (anti-cache GitHub Raw)
+  const server = http.createServer((req, res) => {
+    const cleanUrl = (req.url || '/').split('?')[0];
+    const safePath = path.normalize(cleanUrl).replace(/^(\.\.[\/\\])+/, '');
+    const filePath = path.join(__dirname, safePath === '/' ? 'index.html' : safePath);
+    if (!filePath.startsWith(__dirname) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = {
+      '.html': 'text/html; charset=utf-8',
+      '.json': 'application/json; charset=utf-8',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.js': 'application/javascript'
+    };
+    res.writeHead(200, {
+      'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Access-Control-Allow-Origin': '*'
+    });
+    fs.createReadStream(filePath).pipe(res);
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const localPort = server.address().port;
+
   try {
     for (const reg of regions) {
-      // Gunakan engine radar-mosaik-sumatera.html untuk SEMUA wilayah (Rumah, Palembang, Sumatera)
+      // Gunakan engine radar-mosaik-sumatera.html untuk SEMUA wilayah (Rumah, Palembang, Sumatera) via local HTTP server
       const htmlFile = 'radar-mosaik-sumatera.html';
-      const localHtmlPath = `file://${path.resolve(__dirname, htmlFile)}?region=${reg.key}`;
+      const localHtmlPath = `http://127.0.0.1:${localPort}/${htmlFile}?region=${reg.key}&t=${Date.now()}`;
       console.log(`🗺️ Merender radar BMKG [${reg.name}]...`);
       await page.goto(localHtmlPath, { waitUntil: 'networkidle2', timeout: 35000 });
       await page.waitForFunction('window.__RADAR_DONE__ === true', { timeout: 25000 });
@@ -335,6 +365,7 @@ async function scrapeBMKGMaps(wibTime) {
       } catch (e) {}
     }
   } finally {
+    try { server.close(); } catch (e) {}
     try { await browser.close(); } catch (e) {}
   }
 }

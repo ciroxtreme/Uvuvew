@@ -196,8 +196,26 @@
         const bounds = [[-11.1784, 90.0], [11.1784, 112.5]];
           
           let frames = [];
-          // 1. Coba ambil frame live BMKG resmi dari Cloudflare Worker / GitHub
+          // 0. Prioritaskan radar-frames.json lokal agar render di runner instan & zero-cache
           try {
+            const resLocal = await fetch('./radar-frames.json?t=' + Date.now());
+            if (resLocal.ok) {
+              const locData = await resLocal.json();
+              if (locData && locData.frames && locData.frames.length > 0) {
+                frames = locData.frames.map(f => {
+                  const fileName = f.path || f.filename;
+                  return {
+                    url: fileName ? ('./' + fileName + '?t=' + Date.now()) : f.url,
+                    timeLabel: formatToWibLabel(f.timeLabel, f.timestamp),
+                    timestamp: Date.now()
+                  };
+                });
+              }
+            }
+          } catch (e0) {}
+
+          // 1. Coba ambil frame live BMKG resmi dari Cloudflare Worker / GitHub jika lokal tidak ada
+          if (frames.length === 0) try {
             const apiUrl = (new URLSearchParams(window.location.search)).get('api') || 'https://telegram.ciroxtreme.workers.dev/api/radar-frames';
             const res = await fetch(apiUrl);
             if (res.ok) {
