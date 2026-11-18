@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-18T22:12:31.719927106+00:00",
-  "wibTime": "19/11/2026, 05.12 WIB",
+  "updatedAt": "2026-11-18T22:23:04.320439601+00:00",
+  "wibTime": "19/11/2026, 05.23 WIB",
   "obsTime": "18 Nov 2026 \u2022 22.00",
   "region": "All Sumatera (WMS Nasional BMKG)",
   "bounds": [
@@ -16,26 +16,6 @@
   "frames": [
     {
       "id": "70",
-      "filename": "radar_sumsel_202611182135.png",
-      "timestamp": "202611182135",
-      "timeLabel": "18 Nov 2026 \u2022 21.35",
-      "layerName": "sidarma_mosaic_cmax:Indonesia_202611182135",
-      "tilePrefix": "tile_202611182135_6",
-      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611182135.png",
-      "path": "radar_sumsel_202611182135.png"
-    },
-    {
-      "id": "60",
-      "filename": "radar_sumsel_202611182140.png",
-      "timestamp": "202611182140",
-      "timeLabel": "18 Nov 2026 \u2022 21.40",
-      "layerName": "sidarma_mosaic_cmax:Indonesia_202611182140",
-      "tilePrefix": "tile_202611182140_6",
-      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611182140.png",
-      "path": "radar_sumsel_202611182140.png"
-    },
-    {
-      "id": "50",
       "filename": "radar_sumsel_202611182145.png",
       "timestamp": "202611182145",
       "timeLabel": "18 Nov 2026 \u2022 21.45",
@@ -45,7 +25,7 @@
       "path": "radar_sumsel_202611182145.png"
     },
     {
-      "id": "40",
+      "id": "60",
       "filename": "radar_sumsel_202611182150.png",
       "timestamp": "202611182150",
       "timeLabel": "18 Nov 2026 \u2022 21.50",
@@ -55,7 +35,7 @@
       "path": "radar_sumsel_202611182150.png"
     },
     {
-      "id": "30",
+      "id": "50",
       "filename": "radar_sumsel_202611182155.png",
       "timestamp": "202611182155",
       "timeLabel": "18 Nov 2026 \u2022 21.55",
@@ -65,7 +45,7 @@
       "path": "radar_sumsel_202611182155.png"
     },
     {
-      "id": "20",
+      "id": "40",
       "filename": "radar_sumsel_202611182200.png",
       "timestamp": "202611182200",
       "timeLabel": "18 Nov 2026 \u2022 22.00",
