@@ -1,0 +1,7 @@
+node_modules/
+cfsolve/
+cfsolve_bin.tar.gz
+export_bmkg_radar_linux_x86_64
+tile_*.png
+*.mp4
+*.log

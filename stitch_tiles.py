@@ -1,4 +1,4 @@
-import os, sys, json
+import os, sys, json, glob
 from PIL import Image
 
 def stitch_radar_frames():
@@ -24,10 +24,12 @@ def stitch_radar_frames():
 
     stitched_count = 0
     valid_frames = []
+    active_filenames = set()
 
     for f_info in frames:
         ts = f_info.get("timestamp")
         out_png = f_info.get("filename", f"radar_sumsel_{ts}.png")
+        active_filenames.add(out_png)
         
         # Cek apakah semua 16 tile ada
         tiles_exist = True
@@ -62,6 +64,24 @@ def stitch_radar_frames():
             # Jika tile tidak ada, cek apakah file output sudah ada sebelumnya
             if os.path.exists(out_png):
                 valid_frames.append(f_info)
+
+    # Bersihkan sisa tile_*.png dan radar_sumsel_*.png lama yang sudah tidak ada di 8 frame aktif
+    for leftover_tile in glob.glob("tile_*.png"):
+        try:
+            os.remove(leftover_tile)
+        except:
+            pass
+
+    removed_old = 0
+    for old_png in glob.glob("radar_sumsel_*.png"):
+        if old_png not in active_filenames:
+            try:
+                os.remove(old_png)
+                removed_old += 1
+            except:
+                pass
+    if removed_old > 0:
+        print(f"🧹 Membersihkan {removed_old} file radar_sumsel_*.png lama agar repo tetap ramping!")
 
     if isinstance(data, list):
         out_data = valid_frames
