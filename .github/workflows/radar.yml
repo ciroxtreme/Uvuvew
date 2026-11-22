@@ -2,7 +2,8 @@ name: Scrape Radar Cuaca BMKG
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Aktif setiap 10 menit
+    - cron: '*/10 23,0-16 * * *'  # Siang WIB 06:00-24:00 tiap 10 menit (UTC 23,0-16)
+    - cron: '0 17-22 * * *'  # Malam WIB 00:00-06:00 tiap 1 jam (UTC 17-22)
   workflow_dispatch:        # Bisa dijalankan manual lewat tombol 'Run workflow'
   repository_dispatch:      # Bisa dipanggil dari Cloudflare Worker / Webhook
     types: [scrape_radar, mosaic_sumatra]
