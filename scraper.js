@@ -376,6 +376,17 @@ async function run() {
     body: String(Date.now())
   });
 
+  // Simpan waktu update (string WIB) untuk caption radar di Worker
+  const kvTimeUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_TIME`;
+  await fetch(kvTimeUrl, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${CF_API_TOKEN}`,
+      'Content-Type': 'text/plain'
+    },
+    body: wibTime
+  });
+
   console.log("🎉 PROSES UPDATE RADAR BMKG SELESAI SEMPURNA!");
 }
 
