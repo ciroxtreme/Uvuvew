@@ -99,18 +99,6 @@ async function uploadAnimationToTelegramAndKV(videoPath, caption, kvKey, retries
         body: fileId
       });
 
-      if (kvKey === 'LATEST_RADAR_RUMAH_ANIM_FILE_ID') {
-        const defaultKvUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_ANIM_FILE_ID`;
-        await fetch(defaultKvUrl, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${CF_API_TOKEN}`,
-            'Content-Type': 'text/plain'
-          },
-          body: fileId
-        });
-      }
-
       return fileId;
     } catch (err) {
       console.warn(`[RETRY ANIM] Percobaan upload animasi [${kvKey}] ke-${attempt} gagal:`, err.message);
@@ -376,17 +364,6 @@ async function run() {
 
   // Render semua wilayah (Palembang, Rumah, Sumatera, Jawa, Nasional)
   await scrapeBMKGMaps(wibTime);
-
-  // Simpan timestamp update terakhir
-  const kvTimeUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_TIME`;
-  await fetch(kvTimeUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${CF_API_TOKEN}`,
-      'Content-Type': 'text/plain'
-    },
-    body: wibTime
-  });
 
   // Simpan timestamp epoch ms untuk deteksi stale data di Worker
   const kvMsUrl = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NAMESPACE_ID}/values/LATEST_RADAR_TIMESTAMP_MS`;
