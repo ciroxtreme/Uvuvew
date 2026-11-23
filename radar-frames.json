@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-23T10:01:46.050571628+00:00",
-  "wibTime": "23/11/2026, 17.01 WIB",
-  "obsTime": "23 Nov 2026 • 10.00",
+  "updatedAt": "2026-11-23T10:12:01.318334140+00:00",
+  "wibTime": "23/11/2026, 17.12 WIB",
+  "obsTime": "23 Nov 2026 • 10.10",
   "region": "All Sumatera (WMS Nasional BMKG)",
   "bounds": [
     [
@@ -15,7 +15,7 @@
   ],
   "frames": [
     {
-      "id": "40",
+      "id": "60",
       "filename": "radar_sumsel_202611230930.png",
       "timestamp": "202611230930",
       "timeLabel": "23 Nov 2026 • 09.30",
@@ -23,7 +23,7 @@
       "tilePrefix": "tile_202611230930_6"
     },
     {
-      "id": "30",
+      "id": "50",
       "filename": "radar_sumsel_202611230945.png",
       "timestamp": "202611230945",
       "timeLabel": "23 Nov 2026 • 09.45",
@@ -31,7 +31,7 @@
       "tilePrefix": "tile_202611230945_6"
     },
     {
-      "id": "20",
+      "id": "40",
       "filename": "radar_sumsel_202611230950.png",
       "timestamp": "202611230950",
       "timeLabel": "23 Nov 2026 • 09.50",
@@ -39,7 +39,7 @@
       "tilePrefix": "tile_202611230950_6"
     },
     {
-      "id": "10",
+      "id": "30",
       "filename": "radar_sumsel_202611230955.png",
       "timestamp": "202611230955",
       "timeLabel": "23 Nov 2026 • 09.55",
@@ -47,12 +47,28 @@
       "tilePrefix": "tile_202611230955_6"
     },
     {
-      "id": "00",
+      "id": "20",
       "filename": "radar_sumsel_202611231000.png",
       "timestamp": "202611231000",
       "timeLabel": "23 Nov 2026 • 10.00",
       "layerName": "sidarma_mosaic_cmax:Indonesia_202611231000",
       "tilePrefix": "tile_202611231000_6"
+    },
+    {
+      "id": "10",
+      "filename": "radar_sumsel_202611231005.png",
+      "timestamp": "202611231005",
+      "timeLabel": "23 Nov 2026 • 10.05",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611231005",
+      "tilePrefix": "tile_202611231005_6"
+    },
+    {
+      "id": "00",
+      "filename": "radar_sumsel_202611231010.png",
+      "timestamp": "202611231010",
+      "timeLabel": "23 Nov 2026 • 10.10",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611231010",
+      "tilePrefix": "tile_202611231010_6"
     }
   ]
 }
