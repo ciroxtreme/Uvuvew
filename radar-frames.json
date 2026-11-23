@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-23T04:51:44.730241917+00:00",
-  "wibTime": "23/11/2026, 11.51 WIB",
-  "obsTime": "23 Nov 2026 \u2022 04.50",
+  "updatedAt": "2026-11-23T05:01:41.838731268+00:00",
+  "wibTime": "23/11/2026, 12.01 WIB",
+  "obsTime": "23 Nov 2026 \u2022 05.00",
   "region": "All Sumatera (WMS Nasional BMKG)",
   "bounds": [
     [
@@ -16,26 +16,6 @@
   "frames": [
     {
       "id": "70",
-      "filename": "radar_sumsel_202611230405.png",
-      "timestamp": "202611230405",
-      "timeLabel": "23 Nov 2026 \u2022 04.05",
-      "layerName": "sidarma_mosaic_cmax:Indonesia_202611230405",
-      "tilePrefix": "tile_202611230405_6",
-      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611230405.png",
-      "path": "radar_sumsel_202611230405.png"
-    },
-    {
-      "id": "60",
-      "filename": "radar_sumsel_202611230410.png",
-      "timestamp": "202611230410",
-      "timeLabel": "23 Nov 2026 \u2022 04.10",
-      "layerName": "sidarma_mosaic_cmax:Indonesia_202611230410",
-      "tilePrefix": "tile_202611230410_6",
-      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611230410.png",
-      "path": "radar_sumsel_202611230410.png"
-    },
-    {
-      "id": "50",
       "filename": "radar_sumsel_202611230415.png",
       "timestamp": "202611230415",
       "timeLabel": "23 Nov 2026 \u2022 04.15",
@@ -45,7 +25,7 @@
       "path": "radar_sumsel_202611230415.png"
     },
     {
-      "id": "40",
+      "id": "60",
       "filename": "radar_sumsel_202611230425.png",
       "timestamp": "202611230425",
       "timeLabel": "23 Nov 2026 \u2022 04.25",
@@ -55,7 +35,7 @@
       "path": "radar_sumsel_202611230425.png"
     },
     {
-      "id": "30",
+      "id": "50",
       "filename": "radar_sumsel_202611230435.png",
       "timestamp": "202611230435",
       "timeLabel": "23 Nov 2026 \u2022 04.35",
@@ -65,7 +45,7 @@
       "path": "radar_sumsel_202611230435.png"
     },
     {
-      "id": "20",
+      "id": "40",
       "filename": "radar_sumsel_202611230440.png",
       "timestamp": "202611230440",
       "timeLabel": "23 Nov 2026 \u2022 04.40",
@@ -75,7 +55,7 @@
       "path": "radar_sumsel_202611230440.png"
     },
     {
-      "id": "10",
+      "id": "30",
       "filename": "radar_sumsel_202611230445.png",
       "timestamp": "202611230445",
       "timeLabel": "23 Nov 2026 \u2022 04.45",
@@ -85,7 +65,7 @@
       "path": "radar_sumsel_202611230445.png"
     },
     {
-      "id": "00",
+      "id": "20",
       "filename": "radar_sumsel_202611230450.png",
       "timestamp": "202611230450",
       "timeLabel": "23 Nov 2026 \u2022 04.50",
@@ -93,6 +73,26 @@
       "tilePrefix": "tile_202611230450_6",
       "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611230450.png",
       "path": "radar_sumsel_202611230450.png"
+    },
+    {
+      "id": "10",
+      "filename": "radar_sumsel_202611230455.png",
+      "timestamp": "202611230455",
+      "timeLabel": "23 Nov 2026 \u2022 04.55",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611230455",
+      "tilePrefix": "tile_202611230455_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611230455.png",
+      "path": "radar_sumsel_202611230455.png"
+    },
+    {
+      "id": "00",
+      "filename": "radar_sumsel_202611230500.png",
+      "timestamp": "202611230500",
+      "timeLabel": "23 Nov 2026 \u2022 05.00",
+      "layerName": "sidarma_mosaic_cmax:Indonesia_202611230500",
+      "tilePrefix": "tile_202611230500_6",
+      "url": "https://raw.githubusercontent.com/ciroxtreme/Uvuvew/main/radar_sumsel_202611230500.png",
+      "path": "radar_sumsel_202611230500.png"
     }
   ]
 }
