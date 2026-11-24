@@ -362,6 +362,19 @@ async function run() {
   const wibTime = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
   console.log("🚀 Memulai proses update radar BMKG:", wibTime);
 
+  // Validasi integritas & kesegaran file radar-frames.json
+  const framesPath = path.resolve(__dirname, 'radar-frames.json');
+  if (!fs.existsSync(framesPath)) {
+    throw new Error('❌ radar-frames.json tidak ditemukan!');
+  }
+  const framesData = JSON.parse(fs.readFileSync(framesPath, 'utf8'));
+  const updatedAtMs = new Date(framesData.updatedAt || 0).getTime();
+  const ageMinutes = Math.round((Date.now() - updatedAtMs) / 60000);
+  console.log(`📡 radar-frames.json observasi: ${framesData.obsTime || 'N/A'}, diupdate: ${framesData.wibTime || framesData.updatedAt} (${ageMinutes} menit lalu)`);
+  if (ageMinutes > 60) {
+    throw new Error(`⚠️ Data radar sudah usang (${ageMinutes} menit lalu: ${framesData.obsTime || framesData.wibTime})! Membatalkan broadcast agar tidak menyebarkan foto stale.`);
+  }
+
   // Render semua wilayah (Palembang, Rumah, Sumatera, Jawa, Nasional)
   await scrapeBMKGMaps(wibTime);
 

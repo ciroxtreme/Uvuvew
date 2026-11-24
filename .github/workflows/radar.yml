@@ -63,7 +63,6 @@ jobs:
           curl -x socks5://127.0.0.1:40000 https://cloudflare.com/cdn-cgi/trace || true
 
       - name: Download & Run Precompiled cfsolve Engine (via Local WARP)
-        continue-on-error: true
         env:
           PROXY_URL: ${{ secrets.PROXY_URL }}
         run: |
@@ -71,12 +70,23 @@ jobs:
           curl -L -o /tmp/cfsolve_bin.tar.gz https://github.com/ciroxtreme/Uvuvew/releases/download/cfsolve-bin-v1/export_bmkg_radar_linux_x86_64.tar.gz
           tar -zxvf /tmp/cfsolve_bin.tar.gz -C /tmp
           chmod +x /tmp/export_bmkg_radar_linux_x86_64
-          echo "🚀 Menjalankan cfsolve Turnstile solver via Local WARP Tunnel (Fallback ke PROXY_URL jika ada)..."
-          PROXY_ARG="--proxy socks5://127.0.0.1:40000"
-          if [ -n "$PROXY_URL" ]; then
-            PROXY_ARG="--proxy $PROXY_URL"
+          echo "🚀 Menjalankan cfsolve Turnstile solver via Local WARP Tunnel (Port 40000)..."
+          SUCCESS=0
+          if /tmp/export_bmkg_radar_linux_x86_64 . --proxy socks5://127.0.0.1:40000; then
+            echo "✅ Sukses mengunduh radar BMKG via Local WARP!"
+            SUCCESS=1
+          elif [ -n "$PROXY_URL" ] && /tmp/export_bmkg_radar_linux_x86_64 . --proxy "$PROXY_URL"; then
+            echo "✅ Sukses mengunduh radar BMKG via Fallback PROXY_URL!"
+            SUCCESS=1
+          elif /tmp/export_bmkg_radar_linux_x86_64 .; then
+            echo "✅ Sukses mengunduh radar BMKG via Direct Connection!"
+            SUCCESS=1
           fi
-          /tmp/export_bmkg_radar_linux_x86_64 . $PROXY_ARG || true
+
+          if [ "$SUCCESS" -ne 1 ]; then
+            echo "❌ Semua metode koneksi gagal mengunduh frame radar BMKG!"
+            exit 1
+          fi
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
         run: |
