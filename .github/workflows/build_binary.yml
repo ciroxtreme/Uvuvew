@@ -24,18 +24,24 @@ jobs:
       - name: Build Release Binary
         run: |
           cd cfsolve
-          cargo build --release --bin export_bmkg_radar
-          cp target/release/export_bmkg_radar ../export_bmkg_radar_linux_x86_64
+          cargo build --release --bin challenge
+          cp target/release/challenge ../challenge_linux_x86_64
           cd ..
-          strip export_bmkg_radar_linux_x86_64
-          tar -czvf export_bmkg_radar_linux_x86_64.tar.gz export_bmkg_radar_linux_x86_64
+          strip challenge_linux_x86_64
+          tar -czvf challenge_linux_x86_64.tar.gz challenge_linux_x86_64
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: challenge-x86_64
+          path: challenge_linux_x86_64
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: cfsolve-bin-v1
-          name: "Precompiled cfsolve Native Engine v1"
-          files: export_bmkg_radar_linux_x86_64.tar.gz
+          tag_name: cfsolve-bin-v2
+          name: "Precompiled cfsolve Native Engine v2 (challenge)"
+          files: challenge_linux_x86_64.tar.gz
           draft: false
           prerelease: false
         env:
