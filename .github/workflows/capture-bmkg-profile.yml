@@ -1,0 +1,112 @@
+name: Capture BMKG profile (manual)
+
+# Rekam ulang jawaban challenge Cloudflare BMKG lewat browser Chrome
+# beneran (headed, Xvfb) di runner + capture-proxy. Dipakai saat
+# cfsolve gagal nembus BMKG karena challenge-nya berubah (jawaban
+# lama di cfsolve/profiles/safari-26-ios/challenge-page-answers.json
+# jadi basi). Dijalankan manual (workflow_dispatch), hasilnya
+# di-upload sebagai artifact — TIDAK auto-commit.
+#
+# Alur: build cfsolve -> capture-proxy + Chrome klik checkbox
+# Turnstile di halaman radar -> build_profile dari capture ->
+# tes exporter dengan answers baru -> upload artifact.
+# Kalau tes exporter hijau, answers-new.json siap di-push ke
+# cfsolve/profiles/safari-26-ios/challenge-page-answers.json.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust 1.98.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+          sh /tmp/rustup-init.sh -y --default-toolchain 1.98.0 --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install build deps + Xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev clang cmake pkg-config xvfb
+
+      - name: Build cfsolve tools
+        run: |
+          cd cfsolve
+          cargo build --release --bin capture-proxy --bin export_bmkg_radar --example build_profile --example check_answers
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install playwright-core
+        run: |
+          mkdir -p /tmp/rec && cd /tmp/rec
+          npm init -y >/dev/null 2>&1
+          npm i playwright-core
+
+      - name: Record challenge via capture-proxy + Chrome
+        run: |
+          set -e
+          cd cfsolve
+          ./target/release/capture-proxy --fingerprint profiles/safari-26-ios.json \
+            --site https://www.bmkg.go.id/cuaca/radar \
+            --listen 127.0.0.1:8888 --ca-dir ./proxy-ca --out ./captures &
+          PROXY_PID=$!
+          trap 'kill -INT $PROXY_PID 2>/dev/null || true; wait $PROXY_PID 2>/dev/null || true' EXIT
+          sleep 3
+          CHROME="$(which google-chrome || which chromium || which chromium-browser || true)"
+          echo "chrome: $CHROME"
+          [ -n "$CHROME" ] || { echo "no chrome found"; exit 1; }
+          cd "$GITHUB_WORKSPACE"
+          xvfb-run -a env NODE_PATH=/tmp/rec/node_modules CHROME_PATH="$CHROME" node .github/scripts/record-bmkg.cjs
+          kill -INT $PROXY_PID
+          wait $PROXY_PID || true
+          trap - EXIT
+          echo "=== captures ==="
+          find cfsolve/captures -type f | head -50
+
+      - name: Build fresh answers from capture
+        run: |
+          set -e
+          CAP="$(find cfsolve/captures/sessions -name capture.json 2>/dev/null | head -1)"
+          echo "capture: $CAP"
+          [ -n "$CAP" ] || { echo "no capture.json found — browser did not get through"; exit 1; }
+          echo "=== check_answers: old challenge-page-answers vs new capture (mismatch = stale, expected) ==="
+          ./cfsolve/target/release/examples/check_answers cfsolve/profiles/safari-26-ios/challenge-page-answers.json "$CAP" || true
+          ./cfsolve/target/release/examples/build_profile "$CAP" > answers-new.json
+          ls -la answers-new.json
+          head -c 400 answers-new.json; echo
+
+      - name: Test exporter with fresh answers
+        run: |
+          set -e
+          rm -rf exporter-test && mkdir -p exporter-test/cfsolve/profiles/safari-26-ios
+          cp cfsolve/profiles/safari-26-ios.json exporter-test/cfsolve/profiles/
+          cp cfsolve/profiles/safari-26-ios/answers.json exporter-test/cfsolve/profiles/safari-26-ios/
+          cp answers-new.json exporter-test/cfsolve/profiles/safari-26-ios/challenge-page-answers.json
+          cd exporter-test
+          "$GITHUB_WORKSPACE/cfsolve/target/release/export_bmkg_radar" . 2>&1 | tee ../exporter-test.log || true
+          echo "=== result ==="
+          ls -la
+          test -f radar-frames.json && echo "EXPORTER TEST: OK — radar-frames.json ada" || echo "EXPORTER TEST: GAGAL — radar-frames.json tidak ada"
+          test -f radar-frames.json
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bmkg-profile-capture
+          path: |
+            cfsolve/captures
+            answers-new.json
+            exporter-test.log
+            exporter-test/radar-frames.json
+            record-screenshot.png
+          if-no-files-found: warn
