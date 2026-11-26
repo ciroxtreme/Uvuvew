@@ -3,24 +3,59 @@ import sys
 import re
 import json
 import time
+import urllib.parse
 from camoufox.sync_api import Camoufox
 import requests
+
+def parse_proxy(proxy_url):
+    if not proxy_url:
+        return None
+    try:
+        p = urllib.parse.urlparse(proxy_url)
+        if not p.hostname or not p.port:
+            return None
+        cfg = {"server": f"{p.scheme or 'http'}://{p.hostname}:{p.port}"}
+        if p.username:
+            cfg["username"] = urllib.parse.unquote(p.username)
+        if p.password:
+            cfg["password"] = urllib.parse.unquote(p.password)
+        return cfg
+    except Exception as e:
+        print(f"⚠️ Gagal parse proxy: {e}")
+        return None
+
+def test_proxy_alive(proxy_url):
+    if not proxy_url:
+        return False
+    try:
+        r = requests.get("https://cloudflare.com/cdn-cgi/trace", proxies={"http": proxy_url, "https": proxy_url}, timeout=8)
+        return r.status_code == 200
+    except Exception as e:
+        print(f"⚠️ Proxy tidak merespons ({e}), beralih ke Direct IP...")
+        return False
 
 def main():
     print("🚀 [CAMOUFOX ENGINE] Meluncurkan Stealth Browser untuk menembus Cloudflare BMKG...")
 
     proxy_url = os.environ.get("PROXY_URL", "").strip()
+    proxy_cfg = None
+
+    if proxy_url and test_proxy_alive(proxy_url):
+        proxy_cfg = parse_proxy(proxy_url)
+        print("🌐 [PROXY] Menggunakan Proxy Egress terverifikasi aktif!")
+    else:
+        print("🌐 [DIRECT IP] Berjalan dengan Direct IP (Camoufox Native Fingerprint)...")
+
     camoufox_kwargs = {
         "headless": True,
         "humanize": True,
-        "disable_coop": True,
+        "i_know_what_im_doing": True,
         "window": (1280, 800)
     }
 
-    if proxy_url:
-        print(f"🌐 [PROXY] Menggunakan proxy untuk egress...")
-        # Camoufox expects proxy dict: {"server": "..."}
-        camoufox_kwargs["proxy"] = {"server": proxy_url}
+    if proxy_cfg:
+        camoufox_kwargs["proxy"] = proxy_cfg
+        camoufox_kwargs["geoip"] = True
 
     with Camoufox(**camoufox_kwargs) as browser:
         page = browser.new_page()
@@ -32,7 +67,7 @@ def main():
         # Pantau Turnstile dan resolusi SPA
         solved = False
         html_content = ""
-        for i in range(30):
+        for i in range(35):
             time.sleep(2)
             title = page.title()
             html_content = page.content()
@@ -55,7 +90,7 @@ def main():
                 pass
 
         if not solved:
-            print("❌ Gagal melewati Cloudflare Turnstile setelah 60 detik")
+            print("❌ Gagal melewati Cloudflare Turnstile setelah batas waktu")
             sys.exit(1)
 
         print("✅ [CF CLEARANCE] Berhasil menembus Cloudflare Turnstile BMKG!")
@@ -117,25 +152,25 @@ def main():
             })
 
             print(f"⬇️ [UNDUH TILE] Mengunduh 16 tile untuk frame {idx + 1}/{len(selected_layers)} ({ts})...")
+            req_proxy = {"http": proxy_url, "https": proxy_url} if (proxy_url and proxy_cfg) else None
+            headers = {
+                "Cookie": cookie_header,
+                "User-Agent": user_agent,
+                "Referer": "https://www.bmkg.go.id/cuaca/radar"
+            }
             for x in x_range:
                 for y in y_range:
                     tile_url = f"https://www.bmkg.go.id/api/cuaca/radar/tiles/{z}/{x}/{y}?layer={layer}"
                     tile_file = f"tile_{ts}_{z}_{x}_{y}.png"
                     try:
-                        headers = {
-                            "Cookie": cookie_header,
-                            "User-Agent": user_agent,
-                            "Referer": "https://www.bmkg.go.id/cuaca/radar"
-                        }
-                        req_proxy = {"http": proxy_url, "https": proxy_url} if proxy_url else None
                         resp = requests.get(tile_url, headers=headers, proxies=req_proxy, timeout=15)
                         if resp.status_code == 200:
                             with open(tile_file, "wb") as f_out:
                                 f_out.write(resp.content)
                         else:
-                            print(f"⚠️ Status {resp.status_code} saat mengunduh tile {tile_url}")
+                            print(f"⚠️ Status {resp.status_code} saat unduh {tile_url}")
                     except Exception as err:
-                        print(f"⚠️ Gagal mengunduh tile {tile_url}: {err}")
+                        print(f"⚠️ Gagal unduh {tile_url}: {err}")
 
         # Buat radar-frames.json
         from datetime import datetime, timezone, timedelta
