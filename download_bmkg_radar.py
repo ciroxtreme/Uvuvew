@@ -58,6 +58,25 @@ def main():
     with Camoufox(**camoufox_kwargs) as browser:
         page = browser.new_page()
 
+        # Intercept network responses untuk menangkap layer BMKG langsung dari response API
+        captured_radar_layers = []
+
+        def handle_response(response):
+            try:
+                url = response.url
+                if "/api/cuaca/radar" in url or "radar" in url:
+                    ct = response.headers.get("content-type", "")
+                    if "json" in ct:
+                        data = response.json()
+                        text = json.dumps(data)
+                        matches = re.findall(r'sidarma_mosaic_cmax:Indonesia_[0-9]{12}', text)
+                        if matches:
+                            captured_radar_layers.extend(matches)
+            except Exception:
+                pass
+
+        page.on("response", handle_response)
+
         target_url = "https://www.bmkg.go.id/cuaca/radar"
         print(f"📡 [NAVIGASI] Mengakses {target_url} ...")
         page.goto(target_url, timeout=60000)
@@ -69,17 +88,16 @@ def main():
             time.sleep(2)
             title = page.title()
             html_content = page.content()
-            has_nuxt = "__NUXT_DATA__" in html_content
+            has_nuxt = "__NUXT_DATA__" in html_content or "Radar Cuaca" in title
             print(f"⏳ [TUNGGU VERIFIKASI] Detik ke-{(i+1)*2}: Title='{title}', Has NUXT={has_nuxt}")
 
-            if has_nuxt:
-                # Tunggu 3 detik ekstra agar DOM dan skrip selesai hydration
-                time.sleep(3)
+            if "Radar Cuaca" in title or (has_nuxt and "just a moment" not in title.lower()):
+                # Tunggu 5 detik agar semua API request data radar selesai di-fetch oleh Nuxt
+                time.sleep(5)
                 html_content = page.content()
                 solved = True
                 break
 
-            # Coba trigger / klik elemen Turnstile jika muncul di iframe
             try:
                 for frame in page.frames:
                     if "challenges.cloudflare.com" in frame.url:
@@ -96,45 +114,45 @@ def main():
 
         print("✅ [CF CLEARANCE] Berhasil menembus Cloudflare Turnstile BMKG!")
 
-        # Ambil cookies dan user agent dari sesi browser Camoufox
+        # Ambil cookies dan user agent
         cookies = page.context.cookies()
         cookie_header = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
         user_agent = page.evaluate("() => navigator.userAgent")
         print(f"🍪 [COOKIES] Mendapatkan {len(cookies)} cookies.")
 
-        # Ekstrak data NUXT baik dari tag DOM via page.evaluate maupun dari regex HTML
-        raw_nuxt_str = page.evaluate("""() => {
-            const el = document.getElementById('__NUXT_DATA__');
-            if (el) return el.textContent || el.innerText;
-            const scripts = Array.from(document.querySelectorAll('script'));
-            const nuxtScript = scripts.find(s => s.id === '__NUXT_DATA__' || (s.textContent && s.textContent.includes('sidarma_mosaic_cmax')));
-            return nuxtScript ? (nuxtScript.textContent || nuxtScript.innerText) : null;
+        # 1. Coba cari layer dari captured network responses
+        layer_names = list(captured_radar_layers)
+
+        # 2. Coba cari dari seluruh script / DOM teks
+        dom_matches = page.evaluate("""() => {
+            const matches = [];
+            const text = document.documentElement.innerHTML;
+            const re = /sidarma_mosaic_cmax:Indonesia_[0-9]{12}/g;
+            let m;
+            while ((m = re.exec(text)) !== null) {
+                matches.push(m[0]);
+            }
+            return matches;
         }""")
+        if dom_matches:
+            layer_names.extend(dom_matches)
 
-        if not raw_nuxt_str:
-            m = re.search(r'<script id="__NUXT_DATA__"[^>]*>([\s\S]*?)</script>', html_content)
-            if m:
-                raw_nuxt_str = m.group(1)
-
-        if not raw_nuxt_str:
-            print("❌ Tidak menemukan tag __NUXT_DATA__ di DOM maupun regex HTML!")
-            print("HTML snippet (awal 1000 char):", html_content[:1000])
-            sys.exit(1)
-
-        nuxt_data = json.loads(raw_nuxt_str)
-        print("📦 [NUXT DATA] Berhasil mem-parse data layer internal BMKG!")
-
-        # Cari daftar nama layer sidarma_mosaic_cmax
-        layer_names = []
-        for item in nuxt_data:
-            if isinstance(item, str) and item.startswith("sidarma_mosaic_cmax:Indonesia_"):
-                layer_names.append(item)
+        # 3. Coba regex dari html_content
+        regex_matches = re.findall(r'sidarma_mosaic_cmax:Indonesia_[0-9]{12}', html_content)
+        if regex_matches:
+            layer_names.extend(regex_matches)
 
         unique_layers = sorted(list(set(layer_names)), reverse=True)
-        print(f"🎯 [LAYERS] Ditemukan {len(unique_layers)} layer radar sidarma BMKG: {unique_layers[:3]}")
+        print(f"🎯 [LAYERS] Ditemukan {len(unique_layers)} layer radar sidarma BMKG: {unique_layers[:5]}")
 
         if not unique_layers:
-            print("❌ Tidak ada layer radar sidarma_mosaic_cmax yang ditemukan di NUXT data!")
+            # Inspeksi skrip dan kata kunci radar di DOM untuk diagnosis
+            script_samples = page.evaluate("""() => {
+                const scripts = Array.from(document.querySelectorAll('script'));
+                return scripts.map(s => ({ id: s.id, src: s.src, len: (s.textContent || '').length })).slice(0, 15);
+            }""")
+            print("Inspeksi skrip di halaman:", json.dumps(script_samples, indent=2))
+            print("❌ Tidak ada layer radar sidarma_mosaic_cmax yang ditemukan!")
             sys.exit(1)
 
         # Ambil 8 layer terakhir
