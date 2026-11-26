@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   scrape-and-update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -38,16 +38,22 @@ jobs:
       - name: Install Node Dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Setup Python & Pillow for Tile Stitching
+      - name: Setup Python & Dependencies for Stealth Browser & Tile Stitching
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      - name: Install Python Dependencies
-        run: pip install Pillow
+      - name: Install Python Dependencies & Camoufox Browser
+        run: |
+          pip install --upgrade pip
+          pip install Pillow requests "camoufox[geoip]"
+          python3 -m camoufox fetch
 
       - name: Download BMKG Radar Tiles via Stealth Browser
-        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" node download_bmkg_radar.js
+        env:
+          PROXY_URL: ${{ secrets.PROXY_URL }}
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" python3 download_bmkg_radar.py
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
         run: |
