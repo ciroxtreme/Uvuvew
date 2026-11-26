@@ -71,11 +71,22 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Cache Camoufox Browser Binary
+        uses: actions/cache@v4
+        id: camoufox-cache
+        with:
+          path: ~/.cache/camoufox
+          key: camoufox-browser-v158
+
       - name: Install Python Dependencies & Camoufox Browser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          python3 -m camoufox fetch
+          if [ "${{ steps.camoufox-cache.outputs.cache-hit }}" != "true" ]; then
+            python3 -m camoufox fetch || true
+          fi
 
       - name: Download BMKG Radar Tiles via Stealth Browser
         env:
