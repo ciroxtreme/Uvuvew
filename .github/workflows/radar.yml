@@ -47,7 +47,7 @@ jobs:
       - name: Install Python Dependencies & Camoufox Browser
         run: |
           pip install --upgrade pip
-          pip install Pillow requests "camoufox[geoip]"
+          pip install -r requirements.txt
           python3 -m camoufox fetch
 
       - name: Download BMKG Radar Tiles via Stealth Browser
