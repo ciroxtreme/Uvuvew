@@ -16,7 +16,7 @@ concurrency:
 jobs:
   scrape-and-update:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     permissions:
       contents: write
 
@@ -27,7 +27,7 @@ jobs:
       - name: Install System Dependencies & Xvfb
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends xvfb libgbm-dev ffmpeg curl gpg
+          sudo apt-get install -y --no-install-recommends xvfb libgbm-dev ffmpeg curl
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,47 +46,8 @@ jobs:
       - name: Install Python Dependencies
         run: pip install Pillow
 
-      - name: Install & Configure Cloudflare WARP (SOCKS5 Mode)
-        run: |
-          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends cloudflare-warp
-          sudo systemctl start warp-svc || true
-          sleep 2
-          warp-cli --accept-tos registration new || warp-cli --accept-tos register || true
-          warp-cli --accept-tos mode proxy || true
-          warp-cli --accept-tos proxy port 40000 || true
-          warp-cli --accept-tos connect || true
-          sleep 3
-          warp-cli --accept-tos status || true
-          curl -x socks5://127.0.0.1:40000 https://cloudflare.com/cdn-cgi/trace || true
-
-      - name: Download & Run Precompiled cfsolve Engine (via Local WARP)
-        env:
-          PROXY_URL: ${{ secrets.PROXY_URL }}
-        run: |
-          echo "⚡ Mengunduh precompiled cfsolve native binary dari GitHub Release (instant)..."
-          curl -L -o /tmp/cfsolve_bin.tar.gz https://github.com/ciroxtreme/Uvuvew/releases/download/cfsolve-bin-v1/export_bmkg_radar_linux_x86_64.tar.gz
-          tar -zxvf /tmp/cfsolve_bin.tar.gz -C /tmp
-          chmod +x /tmp/export_bmkg_radar_linux_x86_64
-          echo "🚀 Menjalankan cfsolve Turnstile solver via Local WARP Tunnel (Port 40000)..."
-          SUCCESS=0
-          if /tmp/export_bmkg_radar_linux_x86_64 . --proxy socks5://127.0.0.1:40000; then
-            echo "✅ Sukses mengunduh radar BMKG via Local WARP!"
-            SUCCESS=1
-          elif [ -n "$PROXY_URL" ] && /tmp/export_bmkg_radar_linux_x86_64 . --proxy "$PROXY_URL"; then
-            echo "✅ Sukses mengunduh radar BMKG via Fallback PROXY_URL!"
-            SUCCESS=1
-          elif /tmp/export_bmkg_radar_linux_x86_64 .; then
-            echo "✅ Sukses mengunduh radar BMKG via Direct Connection!"
-            SUCCESS=1
-          fi
-
-          if [ "$SUCCESS" -ne 1 ]; then
-            echo "❌ Semua metode koneksi gagal mengunduh frame radar BMKG!"
-            exit 1
-          fi
+      - name: Download BMKG Radar Tiles via Stealth Browser
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" node download_bmkg_radar.js
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames
         run: |
