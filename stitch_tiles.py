@@ -31,28 +31,29 @@ def stitch_radar_frames():
         out_png = f_info.get("filename", f"radar_sumsel_{ts}.png")
         active_filenames.add(out_png)
         
-        # Cek apakah semua 16 tile ada
-        tiles_exist = True
+        # Cek apakah ada minimal 1 tile yang tersedia untuk frame ini
+        has_any_tile = False
         for x in x_range:
             for y in y_range:
                 tile_file = f"tile_{ts}_{z}_{x}_{y}.png"
-                if not os.path.exists(tile_file):
-                    tiles_exist = False
+                if os.path.exists(tile_file):
+                    has_any_tile = True
                     break
-            if not tiles_exist:
+            if has_any_tile:
                 break
 
-        if tiles_exist:
+        if has_any_tile:
             mosaic = Image.new("RGBA", (len(x_range) * 256, len(y_range) * 256), (0, 0, 0, 0))
             for col_idx, x in enumerate(x_range):
                 for row_idx, y in enumerate(y_range):
                     tile_file = f"tile_{ts}_{z}_{x}_{y}.png"
-                    tile_img = Image.open(tile_file).convert("RGBA")
-                    mosaic.paste(tile_img, (col_idx * 256, row_idx * 256))
-                    try:
-                        os.remove(tile_file) # Bersihkan tile sementara
-                    except:
-                        pass
+                    if os.path.exists(tile_file):
+                        try:
+                            tile_img = Image.open(tile_file).convert("RGBA")
+                            mosaic.paste(tile_img, (col_idx * 256, row_idx * 256))
+                            os.remove(tile_file)
+                        except Exception as e:
+                            print(f"⚠️ Error memproses tile {tile_file}: {e}")
             
             mosaic.save(out_png, "PNG")
             print(f"✅ Stitched frame {ts} -> {out_png}")

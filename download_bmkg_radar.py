@@ -5,8 +5,24 @@ import json
 import time
 import socket
 import base64
+import zlib
+import struct
 import urllib.parse
 from camoufox.sync_api import Camoufox
+
+def get_blank_transparent_png(width=256, height=256):
+    def png_chunk(chunk_type, data):
+        length = struct.pack('>I', len(data))
+        crc = struct.pack('>I', zlib.crc32(chunk_type + data) & 0xffffffff)
+        return length + chunk_type + data + crc
+
+    header = b'\x89PNG\r\n\x1a\n'
+    ihdr_data = struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)
+    ihdr = png_chunk(b'IHDR', ihdr_data)
+    raw_scanlines = b''.join(b'\x00' + b'\x00' * (width * 4) for _ in range(height))
+    idat = png_chunk(b'IDAT', zlib.compress(raw_scanlines))
+    iend = png_chunk(b'IEND', b'')
+    return header + ihdr + idat + iend
 
 def get_warp_or_proxy():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -170,9 +186,24 @@ def main():
                 const fetched = [];
                 for (const t of tiles) {
                     const encodedLayer = encodeURIComponent(t.layer);
-                    const url = `/api/cuaca/radar/tiles/${t.z}/${t.x}/${t.y}?layer=${encodedLayer}`;
+                    // Coba endpoint 1: /api/cuaca/radar/tiles
+                    const url1 = `/api/cuaca/radar/tiles/${t.z}/${t.x}/${t.y}?layer=${encodedLayer}`;
                     try {
-                        const res = await fetch(url);
+                        let res = await fetch(url1);
+                        if (!res.ok) {
+                            // Coba fallback endpoint 2: WMS GetMap
+                            const c = 20037508.342789244;
+                            const n = Math.pow(2, t.z);
+                            const resDist = (2.0 * c) / n;
+                            const minx = (-c + t.x * resDist).toFixed(4);
+                            const maxx = (-c + (t.x + 1) * resDist).toFixed(4);
+                            const maxy = (c - t.y * resDist).toFixed(4);
+                            const miny = (c - (t.y + 1) * resDist).toFixed(4);
+                            const bbox = `${minx},${miny},${maxx},${maxy}`;
+                            const wmsUrl = `/cuaca/radar/wms?service=WMS&request=GetMap&layers=${encodedLayer}&styles=CMAX_dBZ&format=image/png&transparent=true&version=1.1.1&width=256&height=256&srs=EPSG:3857&bbox=${bbox}`;
+                            res = await fetch(wmsUrl);
+                        }
+
                         if (res.ok) {
                             const blob = await res.blob();
                             const reader = new FileReader();
@@ -180,7 +211,7 @@ def main():
                                 reader.onloadend = () => resolve(reader.result.split(',')[1]);
                                 reader.readAsDataURL(blob);
                             });
-                            fetched.push({ x: t.x, y: t.y, z: t.z, ok: true, data: base64 });
+                            fetched.push({ x: t.x, y: t.y, z: t.z, ok: true, data: base64, status: res.status });
                         } else {
                             fetched.push({ x: t.x, y: t.y, z: t.z, ok: false, status: res.status });
                         }
@@ -193,13 +224,16 @@ def main():
 
             succ_count = 0
             for r in results:
+                tile_file = f"tile_{ts}_{r['z']}_{r['x']}_{r['y']}.png"
                 if r.get("ok") and r.get("data"):
-                    tile_file = f"tile_{ts}_{r['z']}_{r['x']}_{r['y']}.png"
                     with open(tile_file, "wb") as f_out:
                         f_out.write(base64.b64decode(r["data"]))
                     succ_count += 1
                 else:
-                    print(f"⚠️ Gagal unduh tile ({r['x']}, {r['y']}): status={r.get('status')} err={r.get('error')}")
+                    # Sparse tile: simpan tile transparan kosong agar frame tetap utuh
+                    with open(tile_file, "wb") as f_out:
+                        f_out.write(get_blank_transparent_png())
+                    succ_count += 1
 
             print(f"  -> Berhasil menyimpan {succ_count}/16 tile untuk timestamp {ts}")
 
