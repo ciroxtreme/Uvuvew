@@ -4,12 +4,11 @@ import re
 import json
 import time
 import socket
+import base64
 import urllib.parse
 from camoufox.sync_api import Camoufox
-import requests
 
 def get_warp_or_proxy():
-    # Cek apakah WARP SOCKS5 aktif di localhost:40000
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(1)
     try:
@@ -58,24 +57,14 @@ def main():
     with Camoufox(**camoufox_kwargs) as browser:
         page = browser.new_page()
 
-        # Intercept network responses untuk menangkap layer BMKG langsung dari response API
-        captured_radar_layers = []
+        # Intercept network responses untuk mendeteksi tile URL format asli yang diminta Leaflet map
+        real_tile_urls = []
 
-        def handle_response(response):
-            try:
-                url = response.url
-                if "/api/cuaca/radar" in url or "radar" in url:
-                    ct = response.headers.get("content-type", "")
-                    if "json" in ct:
-                        data = response.json()
-                        text = json.dumps(data)
-                        matches = re.findall(r'sidarma_mosaic_cmax:Indonesia_[0-9]{12}', text)
-                        if matches:
-                            captured_radar_layers.extend(matches)
-            except Exception:
-                pass
+        def handle_request(req):
+            if "tiles" in req.url or "sidarma" in req.url:
+                real_tile_urls.append(req.url)
 
-        page.on("response", handle_response)
+        page.on("request", handle_request)
 
         target_url = "https://www.bmkg.go.id/cuaca/radar"
         print(f"📡 [NAVIGASI] Mengakses {target_url} ...")
@@ -92,7 +81,6 @@ def main():
             print(f"⏳ [TUNGGU VERIFIKASI] Detik ke-{(i+1)*2}: Title='{title}', Has NUXT={has_nuxt}")
 
             if "Radar Cuaca" in title or (has_nuxt and "just a moment" not in title.lower()):
-                # Tunggu 5 detik agar semua API request data radar selesai di-fetch oleh Nuxt
                 time.sleep(5)
                 html_content = page.content()
                 solved = True
@@ -113,17 +101,11 @@ def main():
             sys.exit(1)
 
         print("✅ [CF CLEARANCE] Berhasil menembus Cloudflare Turnstile BMKG!")
+        if real_tile_urls:
+            print("🔍 [TILE SAMPLE DARI LEAFLET]:", real_tile_urls[:3])
 
-        # Ambil cookies dan user agent
-        cookies = page.context.cookies()
-        cookie_header = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
-        user_agent = page.evaluate("() => navigator.userAgent")
-        print(f"🍪 [COOKIES] Mendapatkan {len(cookies)} cookies.")
-
-        # 1. Coba cari layer dari captured network responses
-        layer_names = list(captured_radar_layers)
-
-        # 2. Coba cari dari seluruh script / DOM teks
+        # Cari daftar nama layer sidarma_mosaic_cmax
+        layer_names = []
         dom_matches = page.evaluate("""() => {
             const matches = [];
             const text = document.documentElement.innerHTML;
@@ -137,7 +119,6 @@ def main():
         if dom_matches:
             layer_names.extend(dom_matches)
 
-        # 3. Coba regex dari html_content
         regex_matches = re.findall(r'sidarma_mosaic_cmax:Indonesia_[0-9]{12}', html_content)
         if regex_matches:
             layer_names.extend(regex_matches)
@@ -146,12 +127,6 @@ def main():
         print(f"🎯 [LAYERS] Ditemukan {len(unique_layers)} layer radar sidarma BMKG: {unique_layers[:5]}")
 
         if not unique_layers:
-            # Inspeksi skrip dan kata kunci radar di DOM untuk diagnosis
-            script_samples = page.evaluate("""() => {
-                const scripts = Array.from(document.querySelectorAll('script'));
-                return scripts.map(s => ({ id: s.id, src: s.src, len: (s.textContent || '').length })).slice(0, 15);
-            }""")
-            print("Inspeksi skrip di halaman:", json.dumps(script_samples, indent=2))
             print("❌ Tidak ada layer radar sidarma_mosaic_cmax yang ditemukan!")
             sys.exit(1)
 
@@ -162,11 +137,6 @@ def main():
         y_range = [30, 31, 32, 33]
 
         frames_meta = []
-        req_proxies = None
-        if proxy_cfg:
-            srv = proxy_cfg["server"]
-            req_proxies = {"http": srv, "https": srv}
-
         for idx, layer in enumerate(selected_layers):
             match_ts = re.search(r'Indonesia_([0-9]{12})', layer)
             ts = match_ts.group(1) if match_ts else str(int(time.time()))
@@ -188,25 +158,50 @@ def main():
                 "tilePrefix": tile_prefix
             })
 
-            print(f"⬇️ [UNDUH TILE] Mengunduh 16 tile untuk frame {idx + 1}/{len(selected_layers)} ({ts})...")
-            headers = {
-                "Cookie": cookie_header,
-                "User-Agent": user_agent,
-                "Referer": "https://www.bmkg.go.id/cuaca/radar"
-            }
+            print(f"⬇️ [UNDUH TILE] Mengunduh 16 tile via Native Browser Fetch untuk frame {idx + 1}/{len(selected_layers)} ({ts})...")
+            
+            # Download langsung via native page fetch di dalam browser Camoufox
+            tiles_to_fetch = []
             for x in x_range:
                 for y in y_range:
-                    tile_url = f"https://www.bmkg.go.id/api/cuaca/radar/tiles/{z}/{x}/{y}?layer={layer}"
-                    tile_file = f"tile_{ts}_{z}_{x}_{y}.png"
-                    try:
-                        resp = requests.get(tile_url, headers=headers, proxies=req_proxies, timeout=15)
-                        if resp.status_code == 200:
-                            with open(tile_file, "wb") as f_out:
-                                f_out.write(resp.content)
-                        else:
-                            print(f"⚠️ Status {resp.status_code} saat unduh {tile_url}")
-                    except Exception as err:
-                        print(f"⚠️ Gagal unduh {tile_url}: {err}")
+                    tiles_to_fetch.append({"x": x, "y": y, "z": z, "layer": layer})
+
+            results = page.evaluate("""async (tiles) => {
+                const fetched = [];
+                for (const t of tiles) {
+                    const encodedLayer = encodeURIComponent(t.layer);
+                    const url = `/api/cuaca/radar/tiles/${t.z}/${t.x}/${t.y}?layer=${encodedLayer}`;
+                    try {
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const blob = await res.blob();
+                            const reader = new FileReader();
+                            const base64 = await new Promise((resolve) => {
+                                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                                reader.readAsDataURL(blob);
+                            });
+                            fetched.push({ x: t.x, y: t.y, z: t.z, ok: true, data: base64 });
+                        } else {
+                            fetched.push({ x: t.x, y: t.y, z: t.z, ok: false, status: res.status });
+                        }
+                    } catch (e) {
+                        fetched.push({ x: t.x, y: t.y, z: t.z, ok: false, error: e.message });
+                    }
+                }
+                return fetched;
+            }""", tiles_to_fetch)
+
+            succ_count = 0
+            for r in results:
+                if r.get("ok") and r.get("data"):
+                    tile_file = f"tile_{ts}_{r['z']}_{r['x']}_{r['y']}.png"
+                    with open(tile_file, "wb") as f_out:
+                        f_out.write(base64.b64decode(r["data"]))
+                    succ_count += 1
+                else:
+                    print(f"⚠️ Gagal unduh tile ({r['x']}, {r['y']}): status={r.get('status')} err={r.get('error')}")
+
+            print(f"  -> Berhasil menyimpan {succ_count}/16 tile untuk timestamp {ts}")
 
         # Buat radar-frames.json
         from datetime import datetime, timezone, timedelta
@@ -224,7 +219,7 @@ def main():
         with open("radar-frames.json", "w") as f_out:
             json.dump(output_data, f_out, indent=2)
 
-        print("🎉 [SUKSES BESAR] Semua tile radar & radar-frames.json berhasil diunduh via Camoufox Stealth Browser!")
+        print("🎉 [SUKSES BESAR] Semua tile radar & radar-frames.json berhasil diunduh via Native Camoufox Fetch!")
 
 if __name__ == "__main__":
     main()
