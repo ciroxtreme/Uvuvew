@@ -73,6 +73,9 @@ def main():
             print(f"⏳ [TUNGGU VERIFIKASI] Detik ke-{(i+1)*2}: Title='{title}', Has NUXT={has_nuxt}")
 
             if has_nuxt:
+                # Tunggu 3 detik ekstra agar DOM dan skrip selesai hydration
+                time.sleep(3)
+                html_content = page.content()
                 solved = True
                 break
 
@@ -99,13 +102,26 @@ def main():
         user_agent = page.evaluate("() => navigator.userAgent")
         print(f"🍪 [COOKIES] Mendapatkan {len(cookies)} cookies.")
 
-        # Ekstrak __NUXT_DATA__
-        m = re.search(r'<script id="__NUXT_DATA__"[^>]*>([\s\S]*?)</script>', html_content)
-        if not m:
-            print("❌ Tidak menemukan tag __NUXT_DATA__ di halaman")
+        # Ekstrak data NUXT baik dari tag DOM via page.evaluate maupun dari regex HTML
+        raw_nuxt_str = page.evaluate("""() => {
+            const el = document.getElementById('__NUXT_DATA__');
+            if (el) return el.textContent || el.innerText;
+            const scripts = Array.from(document.querySelectorAll('script'));
+            const nuxtScript = scripts.find(s => s.id === '__NUXT_DATA__' || (s.textContent && s.textContent.includes('sidarma_mosaic_cmax')));
+            return nuxtScript ? (nuxtScript.textContent || nuxtScript.innerText) : null;
+        }""")
+
+        if not raw_nuxt_str:
+            m = re.search(r'<script id="__NUXT_DATA__"[^>]*>([\s\S]*?)</script>', html_content)
+            if m:
+                raw_nuxt_str = m.group(1)
+
+        if not raw_nuxt_str:
+            print("❌ Tidak menemukan tag __NUXT_DATA__ di DOM maupun regex HTML!")
+            print("HTML snippet (awal 1000 char):", html_content[:1000])
             sys.exit(1)
 
-        nuxt_data = json.loads(m.group(1))
+        nuxt_data = json.loads(raw_nuxt_str)
         print("📦 [NUXT DATA] Berhasil mem-parse data layer internal BMKG!")
 
         # Cari daftar nama layer sidarma_mosaic_cmax
