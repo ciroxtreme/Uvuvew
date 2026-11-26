@@ -86,34 +86,54 @@ def main():
         print(f"📡 [NAVIGASI] Mengakses {target_url} ...")
         page.goto(target_url, timeout=60000)
 
-        # Pantau Turnstile dan resolusi SPA
+        # Pantau Turnstile dan resolusi SPA dengan mekanisme reload / auto-retry
         solved = False
         html_content = ""
-        for i in range(40):
-            time.sleep(2)
-            title = page.title()
-            html_content = page.content()
-            has_nuxt = "__NUXT_DATA__" in html_content or "Radar Cuaca" in title
-            print(f"⏳ [TUNGGU VERIFIKASI] Detik ke-{(i+1)*2}: Title='{title}', Has NUXT={has_nuxt}")
+        max_attempts = 3
 
-            if "Radar Cuaca" in title or (has_nuxt and "just a moment" not in title.lower()):
-                time.sleep(5)
-                html_content = page.content()
-                solved = True
+        for attempt in range(1, max_attempts + 1):
+            if attempt > 1:
+                print(f"🔄 [RETRY] Percobaan ke-{attempt}/{max_attempts} menembus Turnstile (Reload halaman)...")
+                try:
+                    page.reload(timeout=45000)
+                except Exception as e:
+                    print(f"⚠️ Error saat reload: {e}")
+                    page.goto(target_url, timeout=60000)
+
+            # Polling selama 45 detik per attempt
+            for i in range(23):
+                time.sleep(2)
+                try:
+                    title = page.title()
+                    html_content = page.content()
+                except Exception:
+                    continue
+
+                has_nuxt = "__NUXT_DATA__" in html_content or "Radar Cuaca" in title
+                print(f"⏳ [TUNGGU VERIFIKASI (Try {attempt})] Detik ke-{(i+1)*2}: Title='{title}', Has NUXT={has_nuxt}")
+
+                if "Radar Cuaca" in title or (has_nuxt and "just a moment" not in title.lower()):
+                    time.sleep(5)
+                    html_content = page.content()
+                    solved = True
+                    break
+
+                # Coba bantu klik checkbox turnstile jika muncul iframe tantangan
+                try:
+                    for frame in page.frames:
+                        if "challenges.cloudflare.com" in frame.url:
+                            cb = frame.query_selector("input[type='checkbox'], #challenge-stage, .ctp-checkbox-label, label, div.cb-lb")
+                            if cb:
+                                print(f"👆 [CLICK (Try {attempt})] Mengklik elemen Turnstile di dalam iframe...")
+                                cb.click()
+                except Exception:
+                    pass
+
+            if solved:
                 break
 
-            try:
-                for frame in page.frames:
-                    if "challenges.cloudflare.com" in frame.url:
-                        cb = frame.query_selector("input[type='checkbox'], #challenge-stage, .ctp-checkbox-label, label")
-                        if cb:
-                            print("👆 [CLICK] Mengklik elemen Turnstile di dalam iframe...")
-                            cb.click()
-            except Exception:
-                pass
-
         if not solved:
-            print("❌ Gagal melewati Cloudflare Turnstile setelah batas waktu")
+            print("❌ Gagal melewati Cloudflare Turnstile setelah 3 percobaan reload")
             sys.exit(1)
 
         print("✅ [CF CLEARANCE] Berhasil menembus Cloudflare Turnstile BMKG!")
