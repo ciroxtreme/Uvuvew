@@ -9,17 +9,13 @@ const fetch = require('node-fetch');
   let browser, page;
   try {
     const result = await connect({
-      headless: 'auto',
+      headless: false,
       turnstile: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
+        '--window-size=1280,800'
       ],
       connectOption: {
         defaultViewport: { width: 1280, height: 800 }
@@ -54,10 +50,10 @@ const fetch = require('node-fetch');
 
     console.log("✅ [CF CLEARANCE] Berhasil menembus Cloudflare Turnstile BMKG!");
 
-    // Ekstrak token / cookies dari context browser
+    // Ekstrak cookies dari context browser
     const cookies = await page.cookies();
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join("; ");
-    console.log(`🍪 [COOKIES] Mendapatkan ${cookies.length} cookies (termasuk cf_clearance).`);
+    console.log(`🍪 [COOKIES] Mendapatkan ${cookies.length} cookies.`);
 
     // Ekstrak __NUXT_DATA__ untuk mendapatkan layer radar
     const html = await page.content();
@@ -94,7 +90,6 @@ const fetch = require('node-fetch');
       const filename = `radar_sumsel_${ts}.png`;
       const tilePrefix = `tile_${ts}_6`;
 
-      // Format label waktu
       let timeLabel = ts;
       if (matchTs) {
         const y = ts.slice(0, 4), m = ts.slice(4, 6), d = ts.slice(6, 8), h = ts.slice(8, 10), min = ts.slice(10, 12);
@@ -112,7 +107,6 @@ const fetch = require('node-fetch');
 
       console.log(`⬇️ [UNDUH TILE] Mengunduh 16 tile untuk frame ${idx + 1}/${selectedLayers.length} (${ts})...`);
       
-      // Unduh 16 tile secara paralel menggunakan session cookies yang valid
       const tilePromises = [];
       for (const x of xRange) {
         for (const y of yRange) {
@@ -136,7 +130,6 @@ const fetch = require('node-fetch');
       await Promise.all(tilePromises);
     }
 
-    // Tulis radar-frames.json
     const outputData = {
       updatedAt: new Date().toISOString(),
       wibTime: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' }) + " WIB",
