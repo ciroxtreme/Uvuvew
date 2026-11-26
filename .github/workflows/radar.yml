@@ -27,7 +27,34 @@ jobs:
       - name: Install System Dependencies & Xvfb
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends xvfb libgbm-dev ffmpeg curl
+          sudo apt-get install -y --no-install-recommends xvfb libgbm-dev ffmpeg curl gpg
+
+      - name: Install & Setup Official Cloudflare WARP SOCKS5 Tunnel
+        run: |
+          echo "📥 Memasang Cloudflare WARP client resmi..."
+          export DEBIAN_FRONTEND=noninteractive
+          curl -fsSL -o /tmp/warp.deb https://pkg.cloudflareclient.com/pool/jammy/main/c/cloudflare-warp/cloudflare-warp_2024.11.309.0_amd64.deb || curl -fsSL -o /tmp/warp.deb https://pkg.cloudflareclient.com/pool/jammy/main/c/cloudflare-warp/cloudflare-warp_2024.6.497.0_amd64.deb || true
+
+          if [ -f /tmp/warp.deb ] && [ $(stat -c%s /tmp/warp.deb) -gt 1000000 ]; then
+            sudo dpkg -i /tmp/warp.deb || true
+          else
+            curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+            echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ jammy main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+            sudo apt-get update -y
+            sudo apt-get install -y cloudflare-warp
+          fi
+
+          sudo systemctl start warp-svc
+          sleep 1
+
+          warp-cli --accept-tos registration new || warp-cli --accept-tos register || true
+          warp-cli --accept-tos mode proxy || true
+          warp-cli --accept-tos proxy port 40000 || true
+          warp-cli --accept-tos connect || true
+
+          sleep 2
+          echo "✅ Status WARP:"
+          warp-cli --accept-tos status || true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -52,7 +79,7 @@ jobs:
 
       - name: Download BMKG Radar Tiles via Stealth Browser
         env:
-          PROXY_URL: ${{ secrets.PROXY_URL }}
+          PROXY_URL: socks5://127.0.0.1:40000
         run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" python3 download_bmkg_radar.py
 
       - name: Stitch WMS Tiles into Seamless Full Sumatera Radar Frames

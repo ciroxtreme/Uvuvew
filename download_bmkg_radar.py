@@ -3,48 +3,46 @@ import sys
 import re
 import json
 import time
+import socket
 import urllib.parse
 from camoufox.sync_api import Camoufox
 import requests
 
-def parse_proxy(proxy_url):
-    if not proxy_url:
-        return None
+def get_warp_or_proxy():
+    # Cek apakah WARP SOCKS5 aktif di localhost:40000
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(1)
     try:
-        p = urllib.parse.urlparse(proxy_url)
-        if not p.hostname or not p.port:
-            return None
-        cfg = {"server": f"{p.scheme or 'http'}://{p.hostname}:{p.port}"}
-        if p.username:
-            cfg["username"] = urllib.parse.unquote(p.username)
-        if p.password:
-            cfg["password"] = urllib.parse.unquote(p.password)
-        return cfg
-    except Exception as e:
-        print(f"⚠️ Gagal parse proxy: {e}")
-        return None
+        s.connect(("127.0.0.1", 40000))
+        s.close()
+        print("✅ [WARP] Terdeteksi Cloudflare WARP SOCKS5 Tunnel aktif di 127.0.0.1:40000!")
+        return {"server": "socks5://127.0.0.1:40000"}
+    except Exception:
+        pass
 
-def test_proxy_alive(proxy_url):
-    if not proxy_url:
-        return False
-    try:
-        r = requests.get("https://cloudflare.com/cdn-cgi/trace", proxies={"http": proxy_url, "https": proxy_url}, timeout=8)
-        return r.status_code == 200
-    except Exception as e:
-        print(f"⚠️ Proxy tidak merespons ({e}), beralih ke Direct IP...")
-        return False
+    env_proxy = os.environ.get("PROXY_URL", "").strip()
+    if env_proxy:
+        try:
+            p = urllib.parse.urlparse(env_proxy)
+            if p.hostname and p.port:
+                cfg = {"server": f"{p.scheme or 'http'}://{p.hostname}:{p.port}"}
+                if p.username:
+                    cfg["username"] = urllib.parse.unquote(p.username)
+                if p.password:
+                    cfg["password"] = urllib.parse.unquote(p.password)
+                return cfg
+        except Exception as e:
+            print(f"⚠️ Gagal parse env proxy: {e}")
+    return None
 
 def main():
     print("🚀 [CAMOUFOX ENGINE] Meluncurkan Stealth Browser untuk menembus Cloudflare BMKG...")
 
-    proxy_url = os.environ.get("PROXY_URL", "").strip()
-    proxy_cfg = None
-
-    if proxy_url and test_proxy_alive(proxy_url):
-        proxy_cfg = parse_proxy(proxy_url)
-        print("🌐 [PROXY] Menggunakan Proxy Egress terverifikasi aktif!")
+    proxy_cfg = get_warp_or_proxy()
+    if proxy_cfg:
+        print(f"🌐 [EGRESS] Menggunakan proxy: {proxy_cfg['server']}")
     else:
-        print("🌐 [DIRECT IP] Berjalan dengan Direct IP (Camoufox Native Fingerprint)...")
+        print("🌐 [EGRESS] Menggunakan Direct IP...")
 
     camoufox_kwargs = {
         "headless": True,
@@ -67,7 +65,7 @@ def main():
         # Pantau Turnstile dan resolusi SPA
         solved = False
         html_content = ""
-        for i in range(35):
+        for i in range(40):
             time.sleep(2)
             title = page.title()
             html_content = page.content()
@@ -130,6 +128,11 @@ def main():
         y_range = [30, 31, 32, 33]
 
         frames_meta = []
+        req_proxies = None
+        if proxy_cfg:
+            srv = proxy_cfg["server"]
+            req_proxies = {"http": srv, "https": srv}
+
         for idx, layer in enumerate(selected_layers):
             match_ts = re.search(r'Indonesia_([0-9]{12})', layer)
             ts = match_ts.group(1) if match_ts else str(int(time.time()))
@@ -152,7 +155,6 @@ def main():
             })
 
             print(f"⬇️ [UNDUH TILE] Mengunduh 16 tile untuk frame {idx + 1}/{len(selected_layers)} ({ts})...")
-            req_proxy = {"http": proxy_url, "https": proxy_url} if (proxy_url and proxy_cfg) else None
             headers = {
                 "Cookie": cookie_header,
                 "User-Agent": user_agent,
@@ -163,7 +165,7 @@ def main():
                     tile_url = f"https://www.bmkg.go.id/api/cuaca/radar/tiles/{z}/{x}/{y}?layer={layer}"
                     tile_file = f"tile_{ts}_{z}_{x}_{y}.png"
                     try:
-                        resp = requests.get(tile_url, headers=headers, proxies=req_proxy, timeout=15)
+                        resp = requests.get(tile_url, headers=headers, proxies=req_proxies, timeout=15)
                         if resp.status_code == 200:
                             with open(tile_file, "wb") as f_out:
                                 f_out.write(resp.content)
